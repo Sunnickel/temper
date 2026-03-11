@@ -23,6 +23,7 @@ use bevy_ecs::schedule::{Schedule, SystemSet};
 pub mod collision_only;
 pub mod gravity_no_drag;
 pub mod ground;
+pub mod pig;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct MobLoadSystems;
@@ -30,7 +31,10 @@ pub struct MobLoadSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct MobSaveSystems;
 
-pub fn register_tick_systems(_schedule: &mut Schedule) {}
+pub fn register_tick_systems(schedule: &mut Schedule) {
+    schedule.add_systems(pig::tick_pig);
+    schedule.add_systems(pig::tick_pig_particles);
+}
 
 pub fn register_load_systems(schedule: &mut Schedule) {
     ground::register_load_systems(schedule);
