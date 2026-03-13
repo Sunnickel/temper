@@ -58,6 +58,18 @@ pub fn place_item(
         | item!("acacia_door")
         | item!("dark_oak_door") => blocks::door::PlaceableDoor::place(context, state),
 
+        item!("oak_log") | item!("stripped_oak_log") 
+        | item!("spruce_log") | item!("stripped_spruce_log") 
+        | item!("birch_log") | item!("stripped_birch_log") 
+        | item!("jungle_log") | item!("stripped_jungle_log") 
+        | item!("acacia_log") | item!("stripped_acacia_log")
+        | item!("dark_oak_log") | item!("stripped_dark_oak_log")
+        | item!("mangrove_log") | item!("stripped_mangrove_log")
+        | item!("cherry_log") | item!("stripped_cherry_log")
+        | item!("pale_oak_log") | item!("stripped_pale_oak_log")
+        | item!("crimson_stem") | item!("stripped_crimson_stem")
+        | item!("warped_stem") | item!("stripped_warped_stem") => blocks::logs::PlacableLog::place(context, state),
+
         unhandled => {
             let block_opt = ITEM_TO_BLOCK_MAPPING.get(&unhandled.0.0);
             if let Some(block) = block_opt {
