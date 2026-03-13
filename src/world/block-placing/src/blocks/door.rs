@@ -16,15 +16,22 @@ impl PlacableBlock for PlaceableDoor {
         context: BlockPlaceContext,
         state: GlobalState,
     ) -> Result<PlacedBlocks, BlockPlaceError> {
-        let name = match context.item_used {
-            item!("oak_door") => "minecraft:oak_door",
-            item!("birch_door") => "minecraft:birch_door",
-            item!("spruce_door") => "minecraft:spruce_door",
-            item!("jungle_door") => "minecraft:jungle_door",
-            item!("acacia_door") => "minecraft:acacia_door",
-            item!("dark_oak_door") => "minecraft:dark_oak_door",
-            _ => return Err(BlockPlaceError::ItemNotMappedToBlock(context.item_used)),
+        let name = match context.item_used.to_name() {
+            Some(name) => name,
+            None => return Err(BlockPlaceError::ItemIdHasNoNameMapping(context.item_used)),
         };
+
+        let target_block = {
+            let chunk = state
+                .world
+                .get_or_generate_chunk(context.block_position.chunk(), Dimension::Overworld)
+                .expect("Could not load chunk");
+            chunk.get_block(context.block_position.chunk_block_pos())
+        };
+        if !match_block!("air", target_block) && !match_block!("cave_air", target_block) {
+            return Err(BlockPlaceError::TargetBlockNotEmpty(context.block_position));
+        }
+
         let block_above = {
             let chunk = state
                 .world
@@ -33,10 +40,9 @@ impl PlacableBlock for PlaceableDoor {
             chunk.get_block((context.block_position.pos + IVec3::new(0, 1, 0)).into())
         };
         if !(match_block!("air", block_above) || match_block!("cave_air", block_above)) {
-            return Ok(PlacedBlocks {
-                blocks: std::collections::HashMap::new(),
-                take_item: false,
-            });
+            return Err(BlockPlaceError::TargetBlockNotEmpty(
+                context.block_position + IVec3::new(0, 1, 0).into(),
+            ));
         };
         let facing = match context.face_clicked {
             BlockFace::North => "south",
@@ -121,12 +127,15 @@ mod test {
     use super::*;
     use crate::BlockPlaceContext;
     use temper_components::player::rotation::Rotation;
+    use temper_core::block_state_id::{init_block_mappings, init_item_to_block_mapping};
     use temper_core::dimension::Dimension;
     use temper_core::pos::BlockPos;
     use temper_macros::block;
 
     #[test]
     fn test_place_door() {
+        init_item_to_block_mapping();
+        init_block_mappings();
         let (state, _) = temper_state::create_test_state();
         let context = BlockPlaceContext {
             block_clicked: Default::default(),
@@ -174,6 +183,8 @@ mod test {
 
     #[test]
     fn test_place_door_with_block_above() {
+        init_item_to_block_mapping();
+        init_block_mappings();
         let (state, _) = temper_state::create_test_state();
         // Place a block above the door position
         {
@@ -197,16 +208,16 @@ mod test {
             player_position: Default::default(),
         };
         let result = PlaceableDoor::place(context, state.0.clone());
-        assert!(result.is_ok());
-        let placed_blocks = result.unwrap();
         assert!(
-            placed_blocks.blocks.is_empty(),
-            "Door should not be placed when there is a block above"
+            result.is_err(),
+            "Placing a door with a block above should return an error"
         );
     }
 
     #[test]
     fn test_place_door_on_invalid_face() {
+        init_item_to_block_mapping();
+        init_block_mappings();
         let (state, _) = temper_state::create_test_state();
         let context = BlockPlaceContext {
             block_clicked: Default::default(),

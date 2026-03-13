@@ -1,6 +1,7 @@
 mod setup;
 
 use crate::errors::BinaryError;
+use crate::setup::setup_block_and_item_mapping;
 use std::sync::Arc;
 use std::time::Instant;
 use temper_config::whitelist::create_whitelist;
@@ -38,6 +39,8 @@ pub fn entry(start_time: Instant, no_tui: bool) -> Result<(), BinaryError> {
 
     #[cfg(feature = "dashboard")]
     temper_dashboard::start_dashboard(global_state.clone());
+
+    setup_block_and_item_mapping();
 
     game_loop::start_game_loop(global_state.clone(), no_tui)?;
 

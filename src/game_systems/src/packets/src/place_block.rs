@@ -8,9 +8,9 @@ use temper_core::pos::BlockPos;
 use temper_messages::BlockInteractMessage;
 
 use temper_net_runtime::connection::StreamWriter;
-use temper_protocol::PlaceBlockReceiver;
 use temper_protocol::outgoing::block_change_ack::BlockChangeAck;
 use temper_protocol::outgoing::block_update::BlockUpdate;
+use temper_protocol::PlaceBlockReceiver;
 use temper_state::GlobalStateResource;
 use tracing::{debug, error, trace};
 
@@ -167,16 +167,6 @@ pub fn handle(
                             .expect("Failed to load or generate chunk");
                         chunk.get_block(offset_pos.chunk_block_pos())
                     };
-
-                    if !(match_block!("water", block_at_pos)
-                        || match_block!("lava", block_at_pos)
-                        || match_block!("air", block_at_pos))
-                    {
-                        debug!(
-                            "Block placement failed because the block at the target position is not replaceable"
-                        );
-                        continue 'ev_loop;
-                    }
 
                     let placed_blocks = block_placing::place_item(
                         state.0.clone(),

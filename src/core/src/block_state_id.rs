@@ -2,8 +2,7 @@ use crate::block_data::BlockData;
 use ahash::RandomState;
 use bitcode_derive::{Decode, Encode};
 use deepsize::DeepSizeOf;
-use lazy_static::lazy_static;
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::process::exit;
@@ -18,31 +17,36 @@ const BLOCK_ENTRIES: usize = 27914;
 
 const BLOCKSFILE: &str = include_str!("../../../assets/data/blockstates.json");
 
-lazy_static! {
-    pub static ref ID2BLOCK: Vec<BlockData> = {
-        let string_keys: HashMap<String, BlockData, RandomState> =
-            serde_json::from_str(BLOCKSFILE).unwrap();
-        if string_keys.len() != BLOCK_ENTRIES {
-            // Edit this number if the block mappings file changes
-            error!("Block mappings file is not the correct length");
-            error!("Expected {} entries, found {}", BLOCK_ENTRIES, string_keys.len());
-            exit(1);
-        }
-        let mut id2block = Vec::with_capacity(BLOCK_ENTRIES);
-        for _ in 0..BLOCK_ENTRIES {
-            id2block.push(BlockData::default());
-        }
-        string_keys
-            .iter()
-            .map(|(k, v)| (k.parse::<i32>().unwrap(), v.clone()))
-            .for_each(|(k, v)| id2block[k as usize] = v);
-        id2block
-    };
-    pub static ref BLOCK2ID: HashMap<BlockData, i32, RandomState> = ID2BLOCK
+pub static ID2BLOCK: OnceCell<Vec<BlockData>> = OnceCell::new();
+pub static BLOCK2ID: OnceCell<HashMap<BlockData, i32, RandomState>> = OnceCell::new();
+
+pub fn init_block_mappings() {
+    let string_keys: HashMap<String, BlockData, RandomState> =
+        serde_json::from_str(BLOCKSFILE).unwrap();
+    if string_keys.len() != BLOCK_ENTRIES {
+        error!("Block mappings file is not the correct length");
+        error!(
+            "Expected {} entries, found {}",
+            BLOCK_ENTRIES,
+            string_keys.len()
+        );
+        exit(1);
+    }
+    let mut id2block = Vec::with_capacity(BLOCK_ENTRIES);
+    for _ in 0..BLOCK_ENTRIES {
+        id2block.push(BlockData::default());
+    }
+    string_keys
+        .iter()
+        .map(|(k, v)| (k.parse::<i32>().unwrap(), v.clone()))
+        .for_each(|(k, v)| id2block[k as usize] = v);
+    let block2id: HashMap<BlockData, i32, RandomState> = id2block
         .iter()
         .enumerate()
         .map(|(k, v)| (v.clone(), k as i32))
         .collect();
+    ID2BLOCK.set(id2block).expect("Failed to set ID2BLOCK");
+    BLOCK2ID.set(block2id).expect("Failed to set BLOCK2ID");
 }
 
 /// An ID for a block, and it's state in the world. Use this over `BlockData` unless you need to
@@ -62,17 +66,26 @@ impl BlockStateId {
 
     /// Given a BlockData, return a BlockStateId. Does not clone, should be quite fast.
     pub fn from_block_data(block_data: &BlockData) -> Self {
-        let id = BLOCK2ID.get(block_data).copied().unwrap_or_else(|| {
-            warn!("Block data '{block_data}' not found in block mappings file");
-            0
-        });
+        let id = BLOCK2ID
+            .get()
+            .expect("Mappings not initialized")
+            .get(block_data)
+            .copied()
+            .unwrap_or_else(|| {
+                warn!("Block data '{block_data}' not found in block mappings file");
+                0
+            });
         BlockStateId(id as u32)
     }
 
     /// Given a block state ID, return a BlockData. Will clone, so don't use in hot loops.
     /// If the ID is not found, returns None.
     pub fn to_block_data(&self) -> Option<BlockData> {
-        ID2BLOCK.get(self.0 as usize).cloned()
+        ID2BLOCK
+            .get()
+            .expect("Mappings not initialized")
+            .get(self.0 as usize)
+            .cloned()
     }
 
     pub fn from_varint(var_int: VarInt) -> Self {
@@ -154,10 +167,12 @@ impl Default for BlockStateId {
 
 const ITEM_TO_BLOCK_MAPPING_FILE: &str =
     include_str!("../../../assets/data/item_to_block_mapping.json");
-pub static ITEM_TO_BLOCK_MAPPING: Lazy<HashMap<i32, BlockStateId>> = Lazy::new(|| {
+pub static ITEM_TO_BLOCK_MAPPING: OnceCell<HashMap<i32, BlockStateId>> = OnceCell::new();
+
+pub fn init_item_to_block_mapping() {
     let str_form: HashMap<String, String> = serde_json::from_str(ITEM_TO_BLOCK_MAPPING_FILE)
         .expect("Failed to parse item_to_block_mapping.json");
-    str_form
+    let res = str_form
         .into_iter()
         .map(|(k, v)| {
             (
@@ -165,5 +180,8 @@ pub static ITEM_TO_BLOCK_MAPPING: Lazy<HashMap<i32, BlockStateId>> = Lazy::new(|
                 BlockStateId::new(u32::from_str(&v).unwrap()),
             )
         })
-        .collect()
-});
+        .collect();
+    ITEM_TO_BLOCK_MAPPING
+        .set(res)
+        .expect("Failed to set ITEM_TO_BLOCK_MAPPING, it was already set");
+}
