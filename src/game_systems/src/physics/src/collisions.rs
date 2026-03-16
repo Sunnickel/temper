@@ -6,14 +6,13 @@ use bevy_math::bounding::{Aabb3d, BoundingVolume};
 use temper_components::player::grounded::OnGround;
 use temper_components::player::position::Position;
 use temper_components::player::velocity::Velocity;
-use temper_core::block_state_id::BlockStateId;
+use temper_core::block_properties;
 use temper_core::dimension::Dimension;
 use temper_core::pos::{ChunkBlockPos, ChunkPos};
 use temper_entities::PhysicalRegistry;
 use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
 use temper_entities::markers::HasCollisions;
-use temper_macros::match_block;
 use temper_messages::entity_update::SendEntityUpdate;
 use temper_state::{GlobalState, GlobalStateResource};
 
@@ -169,8 +168,5 @@ pub fn is_solid_block(state: &GlobalState, pos: IVec3) -> bool {
         .expect("Failed to load or generate chunk")
         .get_block(ChunkBlockPos::from(pos));
 
-    !match_block!("air", block_state)
-        && !match_block!("void_air", block_state)
-        && !match_block!("water", block_state)
-        && !match_block!("air", block_state)
+    block_properties::is_solid(block_state)
 }

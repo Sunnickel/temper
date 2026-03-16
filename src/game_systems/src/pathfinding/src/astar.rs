@@ -7,6 +7,8 @@ use temper_core::block_state_id::BlockStateId;
 use temper_core::pos::BlockPos;
 use temper_world::Dimension;
 
+use temper_core::block_properties;
+
 use crate::cost::{IMPASSABLE, block_penalty};
 
 /// A path from start to goal, expressed as block positions (feet position).
@@ -249,7 +251,7 @@ fn try_move(
 }
 
 /// Check if an entity can stand with feet at (x, y, z):
-/// - solid block at (x, y-1, z) as floor
+/// - solid block at (x, y-1, z) as floor (uses `block_properties::is_solid`)
 /// - passable blocks for the full body height at (x, y, z) to (x, y+height-1, z)
 ///
 /// Returns `Some(terrain_cost)` if valid, `None` if not.
@@ -260,8 +262,8 @@ fn can_stand_at(
     z: i32,
     dims: EntityDimensions,
 ) -> Option<i32> {
-    // Check for solid floor
-    if block_penalty(get_block(world, x, y - 1, z)) != IMPASSABLE {
+    // Check for solid floor (shared definition with the collision system)
+    if !block_properties::is_solid(get_block(world, x, y - 1, z)) {
         return None; // no solid floor
     }
 
