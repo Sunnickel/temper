@@ -137,3 +137,81 @@ fn is_non_solid(name: &str) -> bool {
         || name.ends_with("_vine")
         || name.ends_with("_roots")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use temper_macros::block;
+
+    /// Helper to assert a block has the expected penalty.
+    fn assert_penalty(id: BlockStateId, expected: i32, name: &str) {
+        assert_eq!(
+            block_penalty(id),
+            expected,
+            "{name} should have penalty {expected}"
+        );
+    }
+
+    #[test]
+    fn passable_blocks_have_zero_cost() {
+        assert_penalty(block!("air"), 0, "air");
+        assert_penalty(block!("short_grass"), 0, "short_grass");
+        assert_penalty(block!("wall_torch", { facing: "north" }), 0, "wall_torch");
+        assert_penalty(block!("red_carpet"), 0, "red_carpet");
+    }
+
+    #[test]
+    fn water_has_medium_penalty() {
+        assert_penalty(block!("water", { level: 0 }), 8, "water");
+    }
+
+    #[test]
+    fn damage_blocks_have_high_penalty() {
+        assert_penalty(
+            block!("fire", { age: 0, east: false, north: false, south: false, up: false, west: false }),
+            16,
+            "fire",
+        );
+        assert_penalty(block!("magma_block"), 16, "magma_block");
+    }
+
+    #[test]
+    fn solid_and_hazard_blocks_are_impassable() {
+        assert_penalty(block!("stone"), IMPASSABLE, "stone");
+        assert_penalty(block!("lava", { level: 0 }), IMPASSABLE, "lava");
+        assert_penalty(block!("cactus", { age: 0 }), IMPASSABLE, "cactus");
+        assert_penalty(
+            block!("oak_fence", { east: false, north: false, south: false, waterlogged: false, west: false }),
+            IMPASSABLE,
+            "oak_fence",
+        );
+    }
+
+    #[test]
+    fn doors_depend_on_open_property() {
+        assert_penalty(
+            block!("oak_door", { open: true, half: "lower", facing: "north", hinge: "left", powered: false }),
+            0,
+            "oak_door (open)",
+        );
+        assert_penalty(
+            block!("oak_door", { open: false, half: "lower", facing: "north", hinge: "left", powered: false }),
+            IMPASSABLE,
+            "oak_door (closed)",
+        );
+    }
+
+    #[test]
+    fn trapdoors_depend_on_open_property() {
+        assert_penalty(
+            block!("oak_trapdoor", { open: true, half: "bottom", facing: "north", powered: false, waterlogged: false }),
+            0,
+            "oak_trapdoor (open)",
+        );
+        assert_penalty(
+            block!("oak_trapdoor", { open: false, half: "bottom", facing: "north", powered: false, waterlogged: false }),
+            IMPASSABLE,
+            "oak_trapdoor (closed)",
+        );
+    }
+}

@@ -10,5 +10,11 @@ temper-components = { workspace = true }
 rustc-hash = "2"
 arrayvec = "0.7"
 
+[dev-dependencies]
+temper-state = { workspace = true }
+temper-macros = { workspace = true }
+temper-data = { workspace = true }
+tempfile = { workspace = true }
+
 [lints]
 workspace = true

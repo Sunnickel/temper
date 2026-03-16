@@ -298,3 +298,258 @@ fn get_block(world: &temper_world::World, x: i32, y: i32, z: i32) -> BlockStateI
         .map(|chunk| chunk.get_block(pos.chunk_block_pos()))
         .unwrap_or_default() // unloaded chunk = air; mob won't path there (no solid floor)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use temper_core::pos::ChunkPos;
+    use temper_macros::block;
+    use temper_state::create_test_state;
+    use tempfile::TempDir;
+
+    fn pig() -> PhysicalProperties {
+        PhysicalProperties::from_vanilla(&temper_data::generated::entities::EntityType::PIG)
+    }
+
+    fn zombie() -> PhysicalProperties {
+        PhysicalProperties::from_vanilla(&temper_data::generated::entities::EntityType::ZOMBIE)
+    }
+
+    /// Test helper that provides a flat world (stone floor at y=64) and
+    /// convenience methods for placing blocks and running pathfinding.
+    struct TestEnv {
+        state: temper_state::GlobalStateResource,
+        _temp_dir: TempDir,
+    }
+
+    impl TestEnv {
+        /// Creates a new test environment with a stone floor at y=64.
+        fn new() -> Self {
+            let (state, _temp_dir) = create_test_state();
+            let env = Self { state, _temp_dir };
+            env.fill_floor(64);
+            env
+        }
+
+        /// Fills an entire chunk layer at the given y with stone.
+        fn fill_floor(&self, y: i32) {
+            let chunk_pos = ChunkPos::new(0, 0);
+            let mut chunk = self
+                .state
+                .0
+                .world
+                .get_or_generate_mut(chunk_pos, Dimension::Overworld)
+                .expect("Failed to get chunk");
+            for x in 0u8..16 {
+                for z in 0u8..16 {
+                    chunk.set_block(
+                        BlockPos::of(i32::from(x), y, i32::from(z)).chunk_block_pos(),
+                        block!("stone"),
+                    );
+                }
+            }
+        }
+
+        /// Places a single block in the world.
+        fn set_block(&self, x: i32, y: i32, z: i32, id: BlockStateId) {
+            let pos = BlockPos::of(x, y, z);
+            let mut chunk = self
+                .state
+                .0
+                .world
+                .get_or_generate_mut(pos.chunk(), Dimension::Overworld)
+                .expect("Failed to get chunk");
+            chunk.set_block(pos.chunk_block_pos(), id);
+        }
+
+        /// Places a vertical wall (stone) along the Z axis at the given x and y.
+        fn wall_z(&self, x: i32, y: i32, z_range: std::ops::Range<i32>) {
+            for z in z_range {
+                self.set_block(x, y, z, block!("stone"));
+            }
+        }
+
+        /// Fills a rectangular area at the given y with stone.
+        fn fill_rect(&self, x_range: std::ops::Range<i32>, y: i32, z_range: std::ops::Range<i32>) {
+            for x in x_range {
+                for z in z_range.clone() {
+                    self.set_block(x, y, z, block!("stone"));
+                }
+            }
+        }
+
+        /// Surrounds a position with stone walls at the given heights.
+        fn cage(&self, center_x: i32, center_z: i32, y_range: std::ops::Range<i32>) {
+            for dx in -1..=1 {
+                for dz in -1..=1 {
+                    if dx != 0 || dz != 0 {
+                        for y in y_range.clone() {
+                            self.set_block(center_x + dx, y, center_z + dz, block!("stone"));
+                        }
+                    }
+                }
+            }
+        }
+
+        /// Runs pathfinding with a generous node budget.
+        fn find(
+            &self,
+            start: BlockPos,
+            goal: BlockPos,
+            physical: &PhysicalProperties,
+        ) -> Option<Path> {
+            find_path(&self.state.0.world, start, goal, 1000, physical)
+        }
+
+        /// Runs pathfinding with a specific node budget.
+        fn find_with_budget(
+            &self,
+            start: BlockPos,
+            goal: BlockPos,
+            max_nodes: usize,
+            physical: &PhysicalProperties,
+        ) -> Option<Path> {
+            find_path(&self.state.0.world, start, goal, max_nodes, physical)
+        }
+    }
+    #[test]
+    fn test_straight_line_path() {
+        let env = TestEnv::new();
+        let start = BlockPos::of(0, 65, 0);
+        let goal = BlockPos::of(3, 65, 0);
+
+        let path = env
+            .find(start, goal, &pig())
+            .expect("Should find a path on flat ground");
+
+        assert_eq!(path.nodes.first(), Some(&start));
+        assert_eq!(path.nodes.last(), Some(&goal));
+    }
+
+    #[test]
+    fn test_diagonal_path() {
+        let env = TestEnv::new();
+        let start = BlockPos::of(0, 65, 0);
+        let goal = BlockPos::of(3, 65, 3);
+
+        let path = env
+            .find(start, goal, &pig())
+            .expect("Should find a diagonal path");
+
+        // With diagonals: (0,0) -> (1,1) -> (2,2) -> (3,3) = 4 nodes
+        assert!(
+            path.nodes.len() <= 5,
+            "Diagonal path should be efficient, got {} nodes",
+            path.nodes.len()
+        );
+    }
+
+    #[test]
+    fn test_path_around_wall() {
+        let env = TestEnv::new();
+        env.wall_z(5, 65, 0..16);
+
+        let start = BlockPos::of(0, 65, 5);
+        let goal = BlockPos::of(10, 65, 5);
+
+        let path = env
+            .find(start, goal, &pig())
+            .expect("Should find a path around the wall");
+
+        assert!(path.nodes.len() > 10, "Path should be longer due to wall");
+    }
+
+    #[test]
+    fn test_step_up() {
+        let env = TestEnv::new();
+        env.set_block(5, 65, 5, block!("stone")); // Step
+
+        let start = BlockPos::of(4, 65, 5);
+        let goal = BlockPos::of(5, 66, 5);
+
+        let path = env
+            .find(start, goal, &pig())
+            .expect("Should find a path stepping up");
+
+        assert_eq!(path.nodes.last(), Some(&goal));
+    }
+
+    #[test]
+    fn test_step_down() {
+        let env = TestEnv::new();
+        env.set_block(5, 65, 5, block!("stone")); // Step
+
+        let start = BlockPos::of(5, 66, 5);
+        let goal = BlockPos::of(4, 65, 5);
+
+        let path = env
+            .find(start, goal, &pig())
+            .expect("Should find a path stepping down");
+
+        assert_eq!(path.nodes.last(), Some(&goal));
+    }
+
+    #[test]
+    fn test_no_path_blocked() {
+        let env = TestEnv::new();
+        env.cage(2, 2, 65..67); // 2 blocks high cage
+
+        let start = BlockPos::of(2, 65, 2);
+        let goal = BlockPos::of(10, 65, 10);
+
+        let path = env.find(start, goal, &pig());
+
+        assert!(
+            path.is_none(),
+            "Should not find a path when completely blocked"
+        );
+    }
+
+    #[test]
+    fn test_same_start_and_goal() {
+        let env = TestEnv::new();
+        let pos = BlockPos::of(5, 65, 5);
+
+        let path = env
+            .find(pos, pos, &pig())
+            .expect("Should return a path for same start and goal");
+
+        assert_eq!(path.nodes.len(), 1);
+        assert_eq!(path.nodes[0], pos);
+    }
+
+    #[test]
+    fn test_tall_entity_blocked_by_low_ceiling() {
+        let env = TestEnv::new();
+        env.fill_rect(3..8, 66, 0..16); // Low ceiling at y=66
+
+        let start = BlockPos::of(0, 65, 5);
+        let goal = BlockPos::of(10, 65, 5);
+
+        // Pig (height < 1 block) should pass
+        assert!(
+            env.find(start, goal, &pig()).is_some(),
+            "Pig should fit under low ceiling"
+        );
+
+        // Zombie (height ~2 blocks) should not pass
+        assert!(
+            env.find(start, goal, &zombie()).is_none(),
+            "Zombie should not fit under low ceiling"
+        );
+    }
+
+    #[test]
+    fn test_max_nodes_limit() {
+        let env = TestEnv::new();
+        let start = BlockPos::of(0, 65, 0);
+        let goal = BlockPos::of(15, 65, 15);
+
+        let path = env.find_with_budget(start, goal, 5, &pig());
+
+        assert!(
+            path.is_none(),
+            "Should not find path with very limited node budget"
+        );
+    }
+}

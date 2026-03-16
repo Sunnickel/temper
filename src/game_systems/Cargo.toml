@@ -13,7 +13,7 @@ player = { path = "./src/player" }
 shutdown = { path = "./src/shutdown" }
 world = { path = "./src/world" }
 interactions = { path = "./src/interactions" }
-
+tempfile = { workspace = true }
 bevy_ecs = { workspace = true }
 temper-commands = { workspace = true }
 temper-config = { workspace = true }
