@@ -76,10 +76,12 @@ pub fn tick_pig(
 
         // Recompute path if cooldown expired or path exhausted
         if ai.repath_cooldown == 0 || ai.waypoint >= ai.path.len() {
-            let Some(target_pos) = players
-                .iter()
-                .min_by_key(|p| ordered_float(pig_pos.coords.distance_squared(p.coords)))
-            else {
+            let Some(target_pos) = players.iter().min_by(|a, b| {
+                pig_pos
+                    .coords
+                    .distance_squared(a.coords)
+                    .total_cmp(&pig_pos.coords.distance_squared(b.coords))
+            }) else {
                 stop(&mut velocity);
                 continue;
             };
@@ -178,8 +180,4 @@ fn pos_to_block(pos: &Position) -> BlockPos {
         (pos.y + EPSILON).floor() as i32,
         pos.z.floor() as i32,
     )
-}
-
-fn ordered_float(v: f64) -> u64 {
-    v.to_bits()
 }
