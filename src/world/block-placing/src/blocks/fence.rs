@@ -1,5 +1,5 @@
-use crate::BlockStateId;
 use crate::errors::BlockPlaceError;
+use crate::BlockStateId;
 use crate::{BlockPlaceContext, PlacableBlock, PlacedBlocks};
 use bevy_math::IVec3;
 use std::collections::{BTreeMap, HashMap};
@@ -112,5 +112,96 @@ impl PlacableBlock for PlaceableFence {
             blocks: changed_blocks,
             take_item: true,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::BlockFace;
+    use temper_core::block_state_id::{init_block_mappings, init_item_to_block_mapping};
+    use temper_core::pos::BlockPos;
+    use temper_macros::item;
+    use temper_state::create_test_state;
+
+    #[test]
+    fn test_place_fence() {
+        init_block_mappings();
+        init_item_to_block_mapping();
+        let (state, _) = create_test_state();
+        let context = BlockPlaceContext {
+            block_clicked: BlockStateId::new(0),
+            block_position: BlockPos::of(0, 64, 0),
+            face_clicked: BlockFace::Top,
+            click_position: (0.5, 1.0, 0.5).into(),
+            player_position: (0.0, 64.0, -1.0).into(),
+            player_rotation: (0.0, 0.0).into(),
+            item_used: item!("oak_fence"), // Assuming this maps to a fence item
+        };
+        let result = PlaceableFence::place(context, state.0);
+        assert!(result.is_ok());
+        let placed_blocks = result.unwrap();
+        assert_eq!(placed_blocks.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_connects_to_neighboring_fences() {
+        init_block_mappings();
+        init_item_to_block_mapping();
+        let (state, _) = create_test_state();
+        let base_position = BlockPos::of(0, 64, 0);
+        // Place a fence at the base position
+        let context1 = BlockPlaceContext {
+            block_clicked: BlockStateId::new(0),
+            block_position: base_position,
+            face_clicked: BlockFace::Top,
+            click_position: (0.5, 1.0, 0.5).into(),
+            player_position: (0.0, 64.0, -1.0).into(),
+            player_rotation: (0.0, 0.0).into(),
+            item_used: item!("oak_fence"),
+        };
+        PlaceableFence::place(context1, state.0.clone()).unwrap();
+
+        // Place another fence to the east of the first one
+        let context2 = BlockPlaceContext {
+            block_clicked: BlockStateId::new(0),
+            block_position: base_position + IVec3::new(1, 0, 0).into(),
+            face_clicked: BlockFace::Top,
+            click_position: (1.5, 1.0, 0.5).into(),
+            player_position: (1.0, 64.0, -1.0).into(),
+            player_rotation: (90.0, 0.0).into(),
+            item_used: item!("oak_fence"),
+        };
+        PlaceableFence::place(context2, state.0.clone()).unwrap();
+
+        // Check that both fences have the correct properties to connect to each other
+        let chunk = state
+            .0
+            .world
+            .get_or_generate_chunk(base_position.chunk(), Dimension::Overworld)
+            .expect("Could not load chunk");
+        let block_id1 = chunk.get_block(base_position.chunk_block_pos());
+        let block_id2 =
+            chunk.get_block((base_position + IVec3::new(1, 0, 0).into()).chunk_block_pos());
+        let block_data1 = block_id1.to_block_data().unwrap();
+        let block_data2 = block_id2.to_block_data().unwrap();
+        assert_eq!(
+            block_data1
+                .properties
+                .as_ref()
+                .unwrap()
+                .get("east")
+                .unwrap(),
+            "true"
+        );
+        assert_eq!(
+            block_data2
+                .properties
+                .as_ref()
+                .unwrap()
+                .get("west")
+                .unwrap(),
+            "true"
+        );
     }
 }
