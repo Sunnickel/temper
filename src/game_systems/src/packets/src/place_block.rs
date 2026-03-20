@@ -8,9 +8,9 @@ use temper_core::pos::BlockPos;
 use temper_messages::BlockInteractMessage;
 
 use temper_net_runtime::connection::StreamWriter;
+use temper_protocol::PlaceBlockReceiver;
 use temper_protocol::outgoing::block_change_ack::BlockChangeAck;
 use temper_protocol::outgoing::block_update::BlockUpdate;
-use temper_protocol::PlaceBlockReceiver;
 use temper_state::GlobalStateResource;
 use tracing::{debug, error, trace};
 
@@ -19,12 +19,10 @@ use block_placing::PlacedBlocks;
 use std::collections::HashMap;
 use temper_components::player::rotation::Rotation;
 use temper_config::server_config::get_global_config;
-use temper_core::block_state_id::BlockStateId;
 use temper_core::dimension::Dimension;
 use temper_core::mq;
 use temper_inventories::hotbar::Hotbar;
 use temper_inventories::inventory::Inventory;
-use temper_macros::match_block;
 use temper_messages::world_change::WorldChange;
 use temper_text::{Color, NamedColor, TextComponentBuilder};
 
@@ -159,7 +157,7 @@ pub fn handle(
                         continue 'ev_loop;
                     }
 
-                    let block_at_pos = {
+                    let _block_at_pos = {
                         let chunk = state
                             .0
                             .world

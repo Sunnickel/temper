@@ -162,7 +162,7 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
     use temper_core::block_state_id::{
-        init_block_mappings, init_item_to_block_mapping, BlockStateId,
+        BlockStateId, init_block_mappings, init_item_to_block_mapping,
     };
     use temper_macros::block;
 

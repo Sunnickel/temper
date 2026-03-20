@@ -60,6 +60,8 @@ pub fn place_item(
         blocks::door::PlaceableDoor::place(context, state)
     } else if item_name.ends_with("_log") {
         blocks::logs::PlacableLog::place(context, state)
+    } else if item_name.ends_with("_fence") {
+        blocks::fence::PlaceableFence::place(context, state)
     } else {
         let block_opt = ITEM_TO_BLOCK_MAPPING
             .get()

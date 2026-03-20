@@ -5,7 +5,7 @@ use bevy_math::IVec3;
 use std::collections::BTreeMap;
 use temper_core::block_data::BlockData;
 use temper_core::dimension::Dimension;
-use temper_macros::{item, match_block};
+use temper_macros::match_block;
 use temper_state::GlobalState;
 use tracing::error;
 
@@ -130,7 +130,7 @@ mod test {
     use temper_core::block_state_id::{init_block_mappings, init_item_to_block_mapping};
     use temper_core::dimension::Dimension;
     use temper_core::pos::BlockPos;
-    use temper_macros::block;
+    use temper_macros::{block, item};
 
     #[test]
     fn test_place_door() {
