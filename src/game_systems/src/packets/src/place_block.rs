@@ -19,12 +19,10 @@ use block_placing::PlacedBlocks;
 use std::collections::HashMap;
 use temper_components::player::rotation::Rotation;
 use temper_config::server_config::get_global_config;
-use temper_core::block_state_id::BlockStateId;
 use temper_core::dimension::Dimension;
 use temper_core::mq;
 use temper_inventories::hotbar::Hotbar;
 use temper_inventories::inventory::Inventory;
-use temper_macros::match_block;
 use temper_messages::world_change::WorldChange;
 use temper_text::{Color, NamedColor, TextComponentBuilder};
 
@@ -159,7 +157,7 @@ pub fn handle(
                         continue 'ev_loop;
                     }
 
-                    let block_at_pos = {
+                    let _block_at_pos = {
                         let chunk = state
                             .0
                             .world
@@ -167,16 +165,6 @@ pub fn handle(
                             .expect("Failed to load or generate chunk");
                         chunk.get_block(offset_pos.chunk_block_pos())
                     };
-
-                    if !(match_block!("water", block_at_pos)
-                        || match_block!("lava", block_at_pos)
-                        || match_block!("air", block_at_pos))
-                    {
-                        debug!(
-                            "Block placement failed because the block at the target position is not replaceable"
-                        );
-                        continue 'ev_loop;
-                    }
 
                     let placed_blocks = block_placing::place_item(
                         state.0.clone(),

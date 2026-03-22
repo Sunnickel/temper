@@ -19,4 +19,6 @@ pub enum BlockPlaceError {
     ItemNotMappedToBlock(ItemID),
     #[error("Block can't be mapped to block state id")]
     BlockNotMappedToBlockStateId(BlockData),
+    #[error("Item ID {0} does not have a name mapping")]
+    ItemIdHasNoNameMapping(ItemID),
 }

@@ -4,6 +4,7 @@ use crate::errors::BinaryError;
 use std::time::Instant;
 use temper_components::player::offline_player_data::OfflinePlayerData;
 use temper_config::server_config::get_global_config;
+use temper_core::block_state_id::{init_block_mappings, init_item_to_block_mapping};
 use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;
 use temper_state::GlobalState;
@@ -71,4 +72,9 @@ pub fn setup_db(state: GlobalState) -> Result<(), BinaryError> {
 
     info!("Database setup complete.");
     Ok(())
+}
+
+pub fn setup_block_and_item_mapping() {
+    init_item_to_block_mapping();
+    init_block_mappings();
 }

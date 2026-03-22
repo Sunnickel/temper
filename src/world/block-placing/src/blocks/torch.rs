@@ -13,6 +13,17 @@ impl PlacableBlock for PlaceableTorch {
         context: BlockPlaceContext,
         state: GlobalState,
     ) -> Result<PlacedBlocks, BlockPlaceError> {
+        let target_block = {
+            let chunk = state
+                .world
+                .get_or_generate_mut(context.block_position.chunk(), Dimension::Overworld)
+                .expect("Could not load chunk");
+            chunk.get_block(context.block_position.chunk_block_pos())
+        };
+        if target_block != block!("air") && target_block != block!("cave_air") {
+            return Err(BlockPlaceError::TargetBlockNotEmpty(context.block_position));
+        }
+
         let block = match context.face_clicked {
             BlockFace::Top => block!("torch"),
             BlockFace::East => block!("wall_torch", {facing: "east"}),
