@@ -1,4 +1,4 @@
-use bevy_ecs::prelude::{Commands, Res};
+use bevy_ecs::prelude::{Commands, MessageWriter, Res};
 use std::time::Instant;
 use temper_components::bounds::CollisionBounds;
 use temper_components::player::chunk_receiver::ChunkReceiver;
@@ -11,6 +11,7 @@ use temper_components::player::{
     swimming::SwimmingState,
 };
 use temper_inventories::hotbar::Hotbar;
+use temper_messages::chunk_calc::ChunkCalc;
 use temper_net_runtime::connection::DisconnectHandle;
 use temper_resources::new_conn::NewConnectionRecv;
 use temper_state::GlobalStateResource;
@@ -20,6 +21,7 @@ pub fn accept_new_connections(
     mut cmd: Commands,
     new_connections: Res<NewConnectionRecv>,
     state: Res<GlobalStateResource>,
+    mut chunk_update_writer: MessageWriter<ChunkCalc>,
 ) {
     if new_connections.0.is_empty() {
         return;
@@ -105,6 +107,8 @@ pub fn accept_new_connections(
                 new_connection.player_identity.username.clone(),
             ),
         );
+
+        chunk_update_writer.write(ChunkCalc(entity_id));
 
         info!(
             "Player {} connected ({:?})",

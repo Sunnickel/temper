@@ -1,31 +1,25 @@
 use crate::auth::authenticate_user;
-use crate::compression::compress_packet;
 use crate::conn_init::VarInt;
 use crate::conn_init::{LoginResult, NetDecodeOpts};
 use crate::connection::StreamWriter;
 use temper_codec::decode::NetDecode;
-use temper_codec::encode::NetEncodeOpts;
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
-use temper_config::server_config::{ServerConfig, get_global_config};
+use temper_config::server_config::{get_global_config, ServerConfig};
 use temper_encryption::errors::NetEncryptionError;
 use temper_encryption::get_encryption_keys;
 use temper_encryption::read::EncryptedReader;
 use temper_macros::lookup_packet;
-use temper_protocol::ConnState::*;
 use temper_protocol::incoming::packet_skeleton::PacketSkeleton;
 use temper_protocol::outgoing::login_success::{LoginSuccessPacket, LoginSuccessProperties};
 use temper_protocol::outgoing::set_default_spawn_position::DEFAULT_SPAWN_POSITION;
 use temper_protocol::outgoing::{commands::CommandsPacket, registry_data::REGISTRY_PACKETS};
+use temper_protocol::ConnState::*;
 use temper_state::GlobalState;
 
 use rand::RngCore;
 use temper_components::player::offline_player_data::OfflinePlayerData;
 use temper_components::player::player_identity::{PlayerIdentity, PlayerProperty};
-use temper_components::player::position::Position;
-use temper_core::dimension::Dimension;
-use temper_core::pos::ChunkPos;
-use temper_protocol::ConnState;
 use temper_protocol::errors::{NetAuthenticationError, NetError, PacketError};
 use temper_protocol::incoming::ack_finish_configuration::AckFinishConfigurationPacket;
 use temper_protocol::incoming::client_information::ClientInformation;
@@ -44,9 +38,9 @@ use temper_protocol::outgoing::game_event::GameEventPacket;
 use temper_protocol::outgoing::login_play::LoginPlayPacket;
 use temper_protocol::outgoing::player_abilities::PlayerAbilities;
 use temper_protocol::outgoing::player_info_update::PlayerInfoUpdatePacket;
-use temper_protocol::outgoing::set_center_chunk::SetCenterChunk;
 use temper_protocol::outgoing::set_compression::SetCompressionPacket;
 use temper_protocol::outgoing::synchronize_player_position::SynchronizePlayerPositionPacket;
+use temper_protocol::ConnState;
 use tokio::net::tcp::OwnedReadHalf;
 use tracing::{debug, error, trace};
 use uuid::Uuid;
@@ -420,61 +414,6 @@ fn send_player_info(
     Ok(())
 }
 
-/// Sends initial chunks to the player.
-fn send_initial_chunks(
-    conn_write: &StreamWriter,
-    state: &GlobalState,
-    config: &ServerConfig,
-    client_view_distance: i8,
-    compressed: bool,
-    pos: Position,
-) -> Result<(), NetError> {
-    // Send center chunk
-    conn_write.send_packet(SetCenterChunk::new(pos.x as i32 >> 4, pos.z as i32 >> 4))?;
-
-    // Calculate render distance
-    let server_render_distance = config.chunk_render_distance as i32;
-    let client_view_distance = client_view_distance as i32;
-    let radius = server_render_distance.min(client_view_distance);
-    // Generate/load chunks in parallel
-    let mut batch = state.thread_pool.batch();
-
-    for rad_x in -radius..=radius {
-        for rad_z in -radius..=radius {
-            batch.execute({
-                let state = state.clone();
-                move || -> Result<Vec<u8>, NetError> {
-                    let x = (pos.x as i32 >> 4) + rad_x;
-                    let z = (pos.z as i32 >> 4) + rad_z;
-                    let chunk = state.world.get_or_generate_chunk(ChunkPos::new(x, z), Dimension::Overworld).expect("Failed to load or generate chunk");
-                    let chunk_data =
-                        temper_protocol::outgoing::chunk_and_light_data::ChunkAndLightData::from_chunk(
-                            ChunkPos::new(x, z),
-                            &chunk,
-                        )?;
-                    compress_packet(&chunk_data, compressed, &NetEncodeOpts::WithLength, 64)
-                }
-            });
-        }
-    }
-
-    // Send all chunks
-    for packet in batch.wait() {
-        match packet {
-            Ok(data) => conn_write.send_raw_packet(data)?,
-            Err(err) => {
-                error!("Failed to send chunk data: {:?}", err);
-                return Err(NetError::Misc(format!(
-                    "Failed to send chunk data: {:?}",
-                    err
-                )));
-            }
-        }
-    }
-
-    Ok(())
-}
-
 /// Sends the command graph to the client.
 fn send_command_graph(conn_write: &StreamWriter) -> Result<(), NetError> {
     conn_write.send_packet(CommandsPacket::from_global_graph())?;
@@ -565,18 +504,12 @@ pub(super) async fn login(
         });
 
     // Phase 3: Play State Setup
+
+    // TODO: at some point this should be moved to the ECS
     send_initial_play_packets(conn_write, &player_identity, &offline_data)?;
     sync_player_position(conn_read, conn_write, &offline_data, compressed).await?;
     send_player_info(conn_write, &player_identity)?;
     send_inventory_contents(conn_write, &offline_data)?;
-    send_initial_chunks(
-        conn_write,
-        &state,
-        config,
-        client_info.view_distance,
-        compressed,
-        offline_data.position.into(),
-    )?;
     send_command_graph(conn_write)?;
 
     // Login complete
