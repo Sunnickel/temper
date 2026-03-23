@@ -37,14 +37,17 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy
+        if: github.event_name != 'pull_request' || !github.event.pull_request.draft
         run: cargo clippy --all-targets -- -D warnings
 
       - name: Install cargo-audit
+        if: github.event_name != 'pull_request' || !github.event.pull_request.draft
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit
 
       - name: Run Cargo Audit
+        if: github.event_name != 'pull_request' || !github.event.pull_request.draft
         run: cargo audit --ignore RUSTSEC-2023-0071
 
   build:
