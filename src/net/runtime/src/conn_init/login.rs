@@ -18,8 +18,9 @@ use temper_protocol::ConnState::*;
 use temper_state::GlobalState;
 
 use rand::RngCore;
+use temper_components::entity_identity::Identity;
 use temper_components::player::offline_player_data::OfflinePlayerData;
-use temper_components::player::player_identity::{PlayerIdentity, PlayerProperty};
+use temper_components::player::player_properties::{PlayerProperties, PlayerProperty};
 use temper_protocol::errors::{NetAuthenticationError, NetError, PacketError};
 use temper_protocol::incoming::ack_finish_configuration::AckFinishConfigurationPacket;
 use temper_protocol::incoming::client_information::ClientInformation;
@@ -194,7 +195,7 @@ async fn send_login_success(
     login_start: &LoginStartPacket,
     player_properties: &[PlayerProperty],
     compressed: bool,
-) -> Result<PlayerIdentity, NetError> {
+) -> Result<(Identity, PlayerProperties), NetError> {
     // Send Login Success
     let login_success = LoginSuccessPacket {
         uuid: login_start.uuid,
@@ -212,12 +213,11 @@ async fn send_login_success(
     };
     conn_write.send_packet(login_success)?;
 
-    // Build PlayerIdentity
-    let player_identity = PlayerIdentity {
+    // Build Identity
+    let player_identity = Identity {
         uuid: Uuid::from_u128(login_start.uuid),
-        username: login_start.username.clone(),
-        short_uuid: login_start.uuid as i32,
-        properties: player_properties.to_vec(),
+        name: Some(login_start.username.clone()),
+        entity_id: login_start.uuid as i32,
     };
 
     // Wait for Login Acknowledged
@@ -235,7 +235,12 @@ async fn send_login_success(
     let _login_acknowledged =
         LoginAcknowledgedPacket::decode(&mut skel.data, &NetDecodeOpts::None)?;
 
-    Ok(player_identity)
+    Ok((
+        player_identity,
+        PlayerProperties {
+            properties: player_properties.to_vec(),
+        },
+    ))
 }
 
 // =================================================================================================
@@ -341,14 +346,14 @@ async fn finish_configuration(
 /// Sends initial play state packets (login_play, abilities, op level).
 fn send_initial_play_packets(
     conn_write: &StreamWriter,
-    player_identity: &PlayerIdentity,
+    player_identity: &Identity,
     offline_data: &OfflinePlayerData,
 ) -> Result<(), NetError> {
     // Send login_play
     let game_mode = offline_data.gamemode;
 
     conn_write.send_packet(LoginPlayPacket::new(
-        player_identity.short_uuid,
+        player_identity.entity_id,
         game_mode as u8,
     ))?;
 
@@ -359,7 +364,7 @@ fn send_initial_play_packets(
 
     // Send OP level (TODO: use actual player OP level)
     conn_write.send_packet(EntityStatus {
-        entity_id: player_identity.short_uuid,
+        entity_id: player_identity.entity_id,
         status: 28, // OP level 4
     })?;
 
@@ -405,10 +410,12 @@ async fn sync_player_position(
 /// Sends player info and game event packets.
 fn send_player_info(
     conn_write: &StreamWriter,
-    player_identity: &PlayerIdentity,
+    player_identity: &Identity,
+    player_properties: &PlayerProperties,
 ) -> Result<(), NetError> {
     conn_write.send_packet(PlayerInfoUpdatePacket::new_player_join_packet(
         player_identity,
+        player_properties,
     ))?;
     conn_write.send_packet(GameEventPacket::new(13, 0.0))?;
     Ok(())
@@ -474,7 +481,7 @@ pub(super) async fn login(
     let player_properties =
         setup_encryption_and_auth(conn_read, conn_write, config, &login_start, compressed).await?;
 
-    let player_identity = send_login_success(
+    let (player_identity, player_properties) = send_login_success(
         conn_read,
         conn_write,
         &login_start,
@@ -494,7 +501,11 @@ pub(super) async fn login(
         .unwrap_or_else(|err| {
             error!(
                 "Error loading player data for {}: {:?}",
-                player_identity.username, err
+                player_identity
+                    .name
+                    .clone()
+                    .unwrap_or("UnknownPlayerName".to_string()),
+                err
             );
             None
         })
@@ -508,7 +519,7 @@ pub(super) async fn login(
     // TODO: at some point this should be moved to the ECS
     send_initial_play_packets(conn_write, &player_identity, &offline_data)?;
     sync_player_position(conn_read, conn_write, &offline_data, compressed).await?;
-    send_player_info(conn_write, &player_identity)?;
+    send_player_info(conn_write, &player_identity, &player_properties)?;
     send_inventory_contents(conn_write, &offline_data)?;
     send_command_graph(conn_write)?;
 
@@ -519,6 +530,7 @@ pub(super) async fn login(
             player_identity: Some(player_identity),
             compression: compressed,
             client_information_component: Some(client_info.into()),
+            player_properties: Some(player_properties),
         },
     ))
 }

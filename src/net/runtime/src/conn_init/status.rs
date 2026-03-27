@@ -103,6 +103,7 @@ pub(super) async fn status(
             player_identity: None,
             compression: false,
             client_information_component: None,
+            player_properties: None,
         },
     ))
 }
