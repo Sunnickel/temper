@@ -39,7 +39,7 @@ impl PartialOrd for Candidate {
 
 /// Entity dimensions for pathfinding, computed from PhysicalProperties.
 #[derive(Clone, Copy)]
-struct EntityDimensions {
+pub(crate) struct EntityDimensions {
     /// Height in blocks (rounded up). E.g. pig=1, zombie=2, enderman=3.
     height_blocks: u8,
     /// Half-width in blocks (rounded up). E.g. 0.45 -> 1 block.
@@ -59,6 +59,104 @@ impl EntityDimensions {
     }
 }
 
+/// Result of a single incremental A* step.
+pub(crate) enum SearchStep {
+    /// A path was found; contains the nodes from start to goal.
+    Found(Vec<BlockPos>),
+    /// No path exists (open set exhausted or node limit reached).
+    NoPath,
+    /// Budget exhausted; call `step` again next tick.
+    Continue,
+}
+
+/// Incremental A* search state. Call `step` each tick with a node budget.
+pub(crate) struct AStarSearch {
+    open: BinaryHeap<Candidate>,
+    g_score: FxHashMap<BlockPos, i32>,
+    came_from: FxHashMap<BlockPos, BlockPos>,
+    start: BlockPos,
+    goal: BlockPos,
+    dims: EntityDimensions,
+    pub nodes_expanded: usize,
+    pub max_nodes: usize,
+}
+
+impl AStarSearch {
+    pub(crate) fn new(
+        start: BlockPos,
+        goal: BlockPos,
+        max_nodes: usize,
+        physical: &PhysicalProperties,
+    ) -> Self {
+        let dims = EntityDimensions::from_physical(physical);
+        let mut open = BinaryHeap::new();
+        let mut g_score = FxHashMap::default();
+        g_score.insert(start, 0);
+        open.push(Candidate {
+            estimated_cost: heuristic(start, goal),
+            real_cost: 0,
+            pos: start,
+        });
+        Self {
+            open,
+            g_score,
+            came_from: FxHashMap::default(),
+            start,
+            goal,
+            dims,
+            nodes_expanded: 0,
+            max_nodes,
+        }
+    }
+
+    /// Advance the search by up to `budget` node expansions.
+    pub(crate) fn step(&mut self, world: &temper_world::World, budget: usize) -> SearchStep {
+        let mut expanded = 0;
+        while let Some(Candidate { real_cost, pos, .. }) = self.open.pop() {
+            if self.nodes_expanded >= self.max_nodes {
+                return SearchStep::NoPath;
+            }
+            self.nodes_expanded += 1;
+            expanded += 1;
+
+            if pos == self.goal {
+                let nodes = reconstruct_path(&self.came_from, pos, self.start);
+                return SearchStep::Found(nodes);
+            }
+
+            if real_cost > *self.g_score.get(&pos).unwrap_or(&i32::MAX) {
+                if expanded >= budget {
+                    return SearchStep::Continue;
+                }
+                continue;
+            }
+
+            for (neighbor, move_cost) in neighbors(world, pos, self.dims) {
+                let tentative_g = real_cost + move_cost;
+                if self
+                    .g_score
+                    .get(&neighbor)
+                    .is_none_or(|&best| tentative_g < best)
+                {
+                    self.g_score.insert(neighbor, tentative_g);
+                    self.came_from.insert(neighbor, pos);
+                    self.open.push(Candidate {
+                        estimated_cost: tentative_g + heuristic(neighbor, self.goal),
+                        real_cost: tentative_g,
+                        pos: neighbor,
+                    });
+                }
+            }
+
+            if expanded >= budget {
+                return SearchStep::Continue;
+            }
+        }
+        // Open set exhausted
+        SearchStep::NoPath
+    }
+}
+
 /// Find a path for a land mob using weighted A*.
 ///
 /// `start` and `goal` are the block positions of the mob's feet.
@@ -71,57 +169,15 @@ pub fn find_path(
     max_nodes: usize,
     physical: &PhysicalProperties,
 ) -> Option<Path> {
-    let dims = EntityDimensions::from_physical(physical);
-
     if start == goal {
         return Some(Path { nodes: vec![goal] });
     }
 
-    let mut open: BinaryHeap<Candidate> = BinaryHeap::new();
-    let mut g_score: FxHashMap<BlockPos, i32> = FxHashMap::default();
-    let mut came_from: FxHashMap<BlockPos, BlockPos> = FxHashMap::default();
-
-    g_score.insert(start, 0);
-    open.push(Candidate {
-        estimated_cost: heuristic(start, goal),
-        real_cost: 0,
-        pos: start,
-    });
-
-    let mut iterations = 0;
-    while let Some(Candidate { real_cost, pos, .. }) = open.pop() {
-        if iterations >= max_nodes {
-            break;
-        }
-        iterations += 1;
-
-        if pos == goal {
-            return Some(reconstruct_path(came_from, pos, start));
-        }
-
-        if real_cost > *g_score.get(&pos).unwrap_or(&i32::MAX) {
-            continue;
-        }
-
-        for (neighbor, move_cost) in neighbors(world, pos, dims) {
-            let tentative_g = real_cost + move_cost;
-
-            if g_score
-                .get(&neighbor)
-                .is_none_or(|&best| tentative_g < best)
-            {
-                g_score.insert(neighbor, tentative_g);
-                came_from.insert(neighbor, pos);
-                open.push(Candidate {
-                    estimated_cost: tentative_g + heuristic(neighbor, goal),
-                    real_cost: tentative_g,
-                    pos: neighbor,
-                });
-            }
-        }
+    let mut search = AStarSearch::new(start, goal, max_nodes, physical);
+    match search.step(world, usize::MAX) {
+        SearchStep::Found(nodes) => Some(Path { nodes }),
+        SearchStep::NoPath | SearchStep::Continue => None,
     }
-
-    None
 }
 
 /// Heuristic using octile distance (accounts for diagonal movement).
@@ -141,10 +197,10 @@ fn heuristic(a: BlockPos, b: BlockPos) -> i32 {
 }
 
 fn reconstruct_path(
-    came_from: FxHashMap<BlockPos, BlockPos>,
+    came_from: &FxHashMap<BlockPos, BlockPos>,
     target: BlockPos,
     start: BlockPos,
-) -> Path {
+) -> Vec<BlockPos> {
     let mut current = target;
     let mut nodes = vec![current];
     while current != start {
@@ -152,7 +208,7 @@ fn reconstruct_path(
         nodes.push(current);
     }
     nodes.reverse();
-    Path { nodes }
+    nodes
 }
 
 /// Cardinal directions (cost multiplier: 10).

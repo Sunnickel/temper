@@ -18,7 +18,7 @@
 //! systems; they just ask each category module to add its already-generated systems to the
 //! appropriate Bevy system set.
 
-use bevy_ecs::schedule::{Schedule, SystemSet};
+use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule, SystemSet};
 
 pub mod collision_only;
 pub mod gravity_no_drag;
@@ -32,7 +32,8 @@ pub struct MobLoadSystems;
 pub struct MobSaveSystems;
 
 pub fn register_tick_systems(schedule: &mut Schedule) {
-    schedule.add_systems(pig::tick_pig);
+    schedule.add_systems(pathfinding::tick_pathfinder);
+    schedule.add_systems(pig::tick_pig.after(pathfinding::tick_pathfinder));
     schedule.add_systems(pig::tick_pig_particles);
 }
 
