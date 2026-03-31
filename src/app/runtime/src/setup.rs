@@ -5,7 +5,7 @@ use std::time::Instant;
 use temper_components::player::offline_player_data::OfflinePlayerData;
 use temper_config::server_config::get_global_config;
 use temper_core::block_state_id::{
-    create_block_mappings, create_item_to_block_mapping, BLOCK2ID, ID2BLOCK, ITEM_TO_BLOCK_MAPPING,
+    BLOCK2ID, ID2BLOCK, ITEM_TO_BLOCK_MAPPING, create_block_mappings, create_item_to_block_mapping,
 };
 use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;

@@ -66,7 +66,7 @@ pub fn place_item(
         blocks::fence::PlaceableFence::place(context, state)
     } else {
         let block_opt = ITEM_TO_BLOCK_MAPPING
-            .get_or_init(|| create_item_to_block_mapping())
+            .get_or_init(create_item_to_block_mapping)
             .get(&context.item_used.0.0);
         if let Some(block) = block_opt {
             match state

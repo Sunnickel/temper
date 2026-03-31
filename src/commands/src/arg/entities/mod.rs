@@ -7,10 +7,10 @@ mod random_player;
 use crate::arg::primitive::PrimitiveArgument;
 use crate::arg::{CommandArgument, ParserResult};
 use crate::{CommandContext, Suggestion};
+use ::uuid::Uuid;
 use bevy_ecs::prelude::Entity;
 use temper_components::entity_identity::Identity;
 use temper_components::player::player_marker::PlayerMarker;
-use ::uuid::Uuid;
 
 /// Represents an entity argument in a command.
 /// It can be a player name, UUID, or special selectors like @e, @p, @r, @a.

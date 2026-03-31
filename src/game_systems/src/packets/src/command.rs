@@ -1,8 +1,8 @@
 use bevy_ecs::prelude::*;
 use temper_commands::{
+    Sender,
     messages::{CommandDispatched, ResolvedCommandDispatched},
     resolve,
-    Sender,
 };
 use temper_components::entity_identity::Identity;
 use temper_core::mq;
