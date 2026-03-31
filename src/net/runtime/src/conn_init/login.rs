@@ -2,26 +2,25 @@ use crate::auth::authenticate_user;
 use crate::conn_init::VarInt;
 use crate::conn_init::{LoginResult, NetDecodeOpts};
 use crate::connection::StreamWriter;
+use rand::Rng;
 use temper_codec::decode::NetDecode;
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
-use temper_config::server_config::{ServerConfig, get_global_config};
+use temper_config::server_config::{get_global_config, ServerConfig};
 use temper_encryption::errors::NetEncryptionError;
 use temper_encryption::get_encryption_keys;
 use temper_encryption::read::EncryptedReader;
 use temper_macros::lookup_packet;
-use temper_protocol::ConnState::*;
 use temper_protocol::incoming::packet_skeleton::PacketSkeleton;
 use temper_protocol::outgoing::login_success::{LoginSuccessPacket, LoginSuccessProperties};
 use temper_protocol::outgoing::set_default_spawn_position::DEFAULT_SPAWN_POSITION;
 use temper_protocol::outgoing::{commands::CommandsPacket, registry_data::REGISTRY_PACKETS};
+use temper_protocol::ConnState::*;
 use temper_state::GlobalState;
 
-use rand::RngCore;
 use temper_components::entity_identity::Identity;
 use temper_components::player::offline_player_data::OfflinePlayerData;
 use temper_components::player::player_properties::{PlayerProperties, PlayerProperty};
-use temper_protocol::ConnState;
 use temper_protocol::errors::{NetAuthenticationError, NetError, PacketError};
 use temper_protocol::incoming::ack_finish_configuration::AckFinishConfigurationPacket;
 use temper_protocol::incoming::client_information::ClientInformation;
@@ -42,6 +41,7 @@ use temper_protocol::outgoing::player_abilities::PlayerAbilities;
 use temper_protocol::outgoing::player_info_update::PlayerInfoUpdatePacket;
 use temper_protocol::outgoing::set_compression::SetCompressionPacket;
 use temper_protocol::outgoing::synchronize_player_position::SynchronizePlayerPositionPacket;
+use temper_protocol::ConnState;
 use tokio::net::tcp::OwnedReadHalf;
 use tracing::{debug, error, trace};
 use uuid::Uuid;
@@ -126,7 +126,7 @@ async fn setup_encryption_and_auth(
 
     // Generate verify token
     let mut verify_token = vec![0u8; 16];
-    rand::thread_rng().fill_bytes(&mut verify_token);
+    rand::rng().fill_bytes(&mut verify_token);
 
     // Send encryption request
     let encryption_packet = EncryptionRequest {

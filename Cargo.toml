@@ -186,14 +186,14 @@ thiserror = "2.0.18"
 anyhow = "1.0.102"
 
 # Cryptography
-rand = "0.8.5"
+rand = "0.10.0"
 fnv = "1.0.7"
 wyhash = "0.6.0"
 ahash = "0.8.12"
-rsa = { version = "0.9.9" }
+rsa = { version = "0.10.0-rc.17" }
 aes = { version = "0.8.4" }
 cfb8 = "0.8.1"
-sha1 = "0.10.6"
+sha1 = "0.11.0"
 num-bigint = "0.4.6"
 
 # Encoding/Serialization
@@ -204,7 +204,7 @@ base64 = "0.22.1"
 
 bitcode = "0.6.9"
 bitcode_derive = "0.6.9"
-toml = "0.9.11"
+toml = "1.1.0+spec-1.1.0"
 craftflow-nbt = "2.1.0"
 figment = { version = "0.10.19", features = ["toml", "env"] }
 simd-json = "0.17.0"
@@ -216,7 +216,7 @@ byteorder = "1.5.0"
 
 # Data types
 dashmap = "7.0.0-rc2"
-uuid = { version = "1.22.0", features = ["v4", "v3", "serde"] }
+uuid = { version = "1.23.0", features = ["v4", "v3", "serde"] }
 indexmap = { version = "2.13.0", features = ["serde"] }
 bimap = "0.6.3"
 
@@ -232,7 +232,7 @@ type_hash = "0.3.0"
 
 # Magic
 dhat = "0.3.3"
-ctor = "0.6.3"
+ctor = "0.8.0"
 
 # Compression/Decompression
 yazi = "0.2.1"
