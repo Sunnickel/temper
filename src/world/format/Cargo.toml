@@ -22,3 +22,15 @@ serde = { workspace = true }
 bytemuck = { workspace = true }
 tokio = { workspace = true }
 type_hash = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+rand = { workspace = true }
+
+[[bench]]
+
+name = "bench"
+harness = false
+
+
+
