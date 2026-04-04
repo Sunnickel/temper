@@ -5,7 +5,7 @@ use temper_core::pos::{ChunkBlockPos, ChunkHeight};
 use temper_world_format::Chunk;
 
 fn serialize_chunk(chunk: &mut Chunk) -> Vec<u8> {
-    black_box(bitcode::encode(black_box(chunk)))
+    black_box(bitcode::serialize(black_box(chunk)).unwrap())
 }
 
 pub fn bench_serialize_world(c: &mut Criterion) {
@@ -32,7 +32,7 @@ pub fn bench_serialize_world(c: &mut Criterion) {
 
     c.bench_function("format/Deserialize", |b| {
         b.iter(|| {
-            black_box(bitcode::decode::<Chunk>(black_box(&serialized))).unwrap();
+            black_box(bitcode::deserialize::<Chunk>(black_box(&serialized))).unwrap();
         })
     });
 }

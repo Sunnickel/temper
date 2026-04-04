@@ -3,9 +3,9 @@ use temper_config::server_config::get_global_config;
 use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;
 use temper_storage::lmdb::LmdbBackend;
-use temper_world_format::Chunk;
 use temper_world_format::errors::WorldError;
 use temper_world_format::errors::WorldError::CorruptedChunkData;
+use temper_world_format::Chunk;
 use tracing::warn;
 use yazi::CompressionLevel;
 
@@ -19,7 +19,7 @@ pub fn save_chunk_internal(
         storage.create_table("chunks".to_string())?;
     }
     let as_bytes = yazi::compress(
-        &bitcode::encode(chunk),
+        &bitcode::serialize(chunk).expect("Unable to serialize chunk"),
         yazi::Format::Zlib,
         CompressionLevel::BestSpeed,
     )?;
@@ -47,7 +47,7 @@ pub fn load_chunk_internal(
                     warn!("Chunk data does not have a checksum, skipping verification.");
                 }
             }
-            let chunk: Chunk = bitcode::decode(&data)
+            let chunk: Chunk = bitcode::deserialize(&data)
                 .map_err(|e| WorldError::BitcodeDecodeError(e.to_string()))?;
             Ok(chunk)
         }

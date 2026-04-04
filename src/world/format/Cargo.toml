@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 bitcode_derive = { workspace = true }
-bitcode = { workspace = true }
+bitcode = { workspace = true, features = ["serde"] }
 temper-codec = { workspace = true }
 temper-macros = { workspace = true }
 deepsize = { workspace = true }
