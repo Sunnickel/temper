@@ -1,6 +1,5 @@
 use crate::block_data::BlockData;
 use ahash::RandomState;
-use bitcode_derive::{Decode, Encode};
 use deepsize::DeepSizeOf;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
