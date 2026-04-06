@@ -1,5 +1,6 @@
 pub mod bundles;
 pub mod components;
+pub mod entity_types;
 pub mod markers;
 
 // Re-exports to facilitate use

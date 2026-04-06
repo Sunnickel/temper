@@ -5,8 +5,9 @@ use temper_commands::{
     arg::{primitive::PrimitiveArgument, utils::parser_error, CommandArgument, ParserResult},
     CommandContext, Sender, Suggestion,
 };
+use temper_entities::entity_types::EntityType;
 use temper_macros::command;
-use temper_messages::{EntityType, SpawnEntityCommand};
+use temper_messages::SpawnEntityCommand;
 use temper_text::TextComponent;
 
 /// Wrapper type for EntityType that implements CommandArgument

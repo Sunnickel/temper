@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::Component;
 use bevy_math::bounding::Aabb3d;
+use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use temper_data::generated::entities::EntityType as VanillaEntityType;
 
@@ -7,7 +8,7 @@ use temper_data::generated::entities::EntityType as VanillaEntityType;
 ///
 /// Represents the volume occupied by an entity in the world.
 /// Used for collision detection and physics.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct BoundingBox {
     aabb: Aabb3d,
 }

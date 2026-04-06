@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::Component;
 use bevy_math::DVec3;
+use serde::{Deserialize, Serialize};
 use std::ops::DerefMut;
 use std::{
     fmt::{Debug, Display, Formatter},
@@ -8,7 +9,7 @@ use std::{
 use temper_codec::net_types::network_position::NetworkPosition;
 use temper_core::pos::ChunkPos;
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Serialize, Deserialize)]
 pub struct Position {
     pub coords: DVec3,
 }

@@ -9,18 +9,22 @@ pub mod vanilla_chunk_format;
 use crate::errors::WorldError;
 use crate::heightmap::Heightmaps;
 use crate::section::{ChunkSection, AIR};
-use deepsize::DeepSizeOf;
+use dashmap::DashMap;
 use serde_derive::{Deserialize, Serialize};
 use temper_core::block_state_id::BlockStateId;
 use temper_core::pos::{ChunkBlockPos, ChunkHeight};
+use temper_entities::entity_types::EntityType;
 use temper_macros::block;
 use type_hash::TypeHash;
+use uuid::Uuid;
 use vanilla_chunk_format::VanillaChunk;
 
-#[derive(Clone, DeepSizeOf, Serialize, Deserialize, TypeHash)]
+#[derive(Clone, Serialize, Deserialize, TypeHash)]
 pub struct Chunk {
     pub sections: Box<[ChunkSection]>,
     height: ChunkHeight,
+    #[type_hash(foreign_type)]
+    pub entities: DashMap<Uuid, (EntityType, Vec<u8>)>,
 
     heightmaps: Option<Heightmaps>,
 }
@@ -51,6 +55,7 @@ impl Chunk {
             sections: vec![ChunkSection::new_uniform(AIR); (height.height / 16) as usize]
                 .into_boxed_slice(),
             height,
+            entities: DashMap::new(),
             heightmaps: None,
         }
     }
@@ -76,6 +81,7 @@ impl Chunk {
             sections: sections.to_vec().into_boxed_slice(),
             height,
             heightmaps: None,
+            entities: DashMap::new()
         }
     }
 
@@ -180,6 +186,7 @@ impl TryFrom<&VanillaChunk> for Chunk {
                 .heightmaps
                 .as_ref()
                 .and_then(|v| Heightmaps::try_from(v).ok()),
+            entities: DashMap::new()
         })
     }
 }
