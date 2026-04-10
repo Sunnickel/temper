@@ -3,9 +3,9 @@ use temper_config::server_config::get_global_config;
 use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;
 use temper_storage::lmdb::LmdbBackend;
+use temper_world_format::Chunk;
 use temper_world_format::errors::WorldError;
 use temper_world_format::errors::WorldError::CorruptedChunkData;
-use temper_world_format::Chunk;
 use tracing::warn;
 use yazi::CompressionLevel;
 
@@ -48,7 +48,7 @@ pub fn load_chunk_internal(
                 }
             }
             let chunk: Chunk = bitcode::deserialize(&data)
-                .map_err(|e| WorldError::BitcodeDecodeError(e.to_string()))?;
+                .map_err(|e| WorldError::BitcodeDeserializeError(e.to_string()))?;
             Ok(chunk)
         }
         None => Err(WorldError::ChunkNotFound),
