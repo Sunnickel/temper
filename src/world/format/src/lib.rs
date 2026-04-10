@@ -8,7 +8,7 @@ pub mod vanilla_chunk_format;
 
 use crate::errors::WorldError;
 use crate::heightmap::Heightmaps;
-use crate::section::{ChunkSection, AIR};
+use crate::section::{AIR, ChunkSection};
 use deepsize::DeepSizeOf;
 use serde_derive::{Deserialize, Serialize};
 use temper_core::block_state_id::BlockStateId;

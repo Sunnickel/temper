@@ -1,7 +1,7 @@
+use crate::BlockStateId;
 use crate::palette::{BlockPalette, BlockPaletteResult, PaletteIndex};
 use crate::section::uniform::UniformSection;
 use crate::section::{AIR, CHUNK_SECTION_LENGTH};
-use crate::BlockStateId;
 use deepsize::DeepSizeOf;
 use serde_derive::{Deserialize, Serialize};
 use std::num::NonZeroU16;

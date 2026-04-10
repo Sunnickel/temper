@@ -1,5 +1,5 @@
-use crate::section::AIR;
 use crate::BlockStateId;
+use crate::section::AIR;
 use deepsize::DeepSizeOf;
 use serde_derive::{Deserialize, Serialize};
 use type_hash::TypeHash;
