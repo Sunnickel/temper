@@ -48,7 +48,7 @@ pub fn load_chunk_internal(
                 }
             }
             let chunk: Chunk = bitcode::deserialize(&data)
-                .map_err(|e| WorldError::BitcodeDecodeError(e.to_string()))?;
+                .map_err(|e| WorldError::BitcodeDeserializeError(e.to_string()))?;
             Ok(chunk)
         }
         None => Err(WorldError::ChunkNotFound),
