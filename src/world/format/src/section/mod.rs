@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use crate::errors::WorldError;
 use crate::light::{LightStorage, SectionLightData};
 use crate::section::biome::{BiomeData, BiomeType};
@@ -100,7 +102,7 @@ pub struct ChunkSection {
     pub(crate) inner: ChunkSectionType,
     pub(crate) light: SectionLightData,
     pub(crate) biome: BiomeData,
-    pub dirty: bool,
+    pub(crate) dirty: Arc<AtomicBool>,
 }
 
 impl ChunkSection {
@@ -109,7 +111,7 @@ impl ChunkSection {
             inner: ChunkSectionType::Uniform(UniformSection::new_with(id)),
             light: SectionLightData::default(),
             biome: BiomeData::Uniform(BiomeType(5)),
-            dirty: true,
+            dirty: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -119,7 +121,7 @@ impl ChunkSection {
                 inner: ChunkSectionType::Uniform(UniformSection::air()),
                 light: SectionLightData::default(),
                 biome: BiomeData::Uniform(BiomeType(5)),
-                dirty: true,
+                dirty: Arc::new(AtomicBool::new(true)),
             }
         } else if unique_blocks < 256 {
             Self {
@@ -128,14 +130,14 @@ impl ChunkSection {
                 )),
                 light: SectionLightData::default(),
                 biome: BiomeData::Uniform(BiomeType(5)),
-                dirty: true,
+                dirty: Arc::new(AtomicBool::new(true)),
             }
         } else {
             Self {
                 inner: ChunkSectionType::Direct(DirectSection::default()),
                 light: SectionLightData::default(),
                 biome: BiomeData::Uniform(BiomeType(5)),
-                dirty: true,
+                dirty: Arc::new(AtomicBool::new(true)),
             }
         }
     }
@@ -147,13 +149,13 @@ impl ChunkSection {
 
     #[inline]
     pub fn set_block(&mut self, pos: SectionBlockPos, id: BlockStateId) {
-        self.dirty = true;
+        self.dirty.store(true, std::sync::atomic::Ordering::Relaxed);
         self.inner.set_block(pos, id);
     }
 
     #[inline]
     pub fn fill(&mut self, id: BlockStateId) {
-        self.dirty = true;
+        self.dirty.store(true, std::sync::atomic::Ordering::Relaxed);
         self.inner.fill(id);
     }
 
@@ -227,7 +229,7 @@ impl TryFrom<&Section> for ChunkSection {
                 return Ok(Self {
                     light: light_data,
                     biome: BiomeData::Uniform(BiomeType(5)),
-                    dirty: false,
+                    dirty: Arc::new(AtomicBool::new(false)),
 
                     inner: ChunkSectionType::Uniform(UniformSection::air()),
                 });
@@ -249,14 +251,14 @@ impl TryFrom<&Section> for ChunkSection {
             Ok(Self {
                 light: light_data,
                 biome: BiomeData::Uniform(BiomeType(5)),
-                dirty: false,
+                dirty: Arc::new(AtomicBool::new(false)),
                 inner: section_data,
             })
         } else {
             Ok(Self {
                 light: light_data,
                 biome: BiomeData::Uniform(BiomeType(5)),
-                dirty: false,
+                dirty: Arc::new(AtomicBool::new(false)),
                 inner: ChunkSectionType::Uniform(UniformSection::air()),
             })
         }

@@ -34,7 +34,9 @@ pub mod block_break;
 pub mod block_interaction;
 pub mod cross_chunk_boundary_event;
 pub mod force_player_recount_event;
+pub mod load_chunk_entities;
 pub mod packet_messages;
+pub mod save_chunk_entities;
 pub mod teleport_player;
 pub mod world_change;
 
@@ -48,6 +50,8 @@ pub use block_break::BlockBrokenEvent;
 pub use block_interaction::{BlockInteractMessage, BlockToggledEvent, DoorToggledEvent};
 use temper_commands::messages::{CommandDispatched, ResolvedCommandDispatched};
 use world_change::WorldChange;
+use crate::load_chunk_entities::LoadChunkEntities;
+use crate::save_chunk_entities::SaveChunkEntities;
 
 pub fn register_messages(world: &mut World) {
     MessageRegistry::register_message::<Movement>(world);
@@ -77,4 +81,6 @@ pub fn register_messages(world: &mut World) {
     MessageRegistry::register_message::<BlockInteractMessage>(world);
     MessageRegistry::register_message::<BlockToggledEvent>(world);
     MessageRegistry::register_message::<DoorToggledEvent>(world);
+    MessageRegistry::register_message::<LoadChunkEntities>(world);
+    MessageRegistry::register_message::<SaveChunkEntities>(world);
 }

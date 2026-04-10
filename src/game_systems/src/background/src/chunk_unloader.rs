@@ -1,4 +1,4 @@
-use bevy_ecs::prelude::{Query, Res};
+use bevy_ecs::prelude::{MessageWriter, Query, Res};
 use std::collections::HashSet;
 use temper_components::player::chunk_receiver::ChunkReceiver;
 use temper_core::dimension::Dimension;
@@ -6,7 +6,7 @@ use temper_core::pos::ChunkPos;
 use temper_state::GlobalStateResource;
 use tracing::{error, trace};
 
-pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>) {
+pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>, mut save_entity_writer: MessageWriter<temper_messages::save_chunk_entities::SaveChunkEntities>) {
     // If there are no connected players, unload all cached chunks
     if query.count() == 0 {
         let mut removed = 0;
@@ -14,7 +14,7 @@ pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>) {
             let ((pos, dim), chunk) = chunk_candidate.pair();
             removed += 1;
             // Write chunks back to the world storage
-            if chunk.sections.iter().any(|section| section.dirty) {
+            if chunk.is_dirty() {
                 state
                     .0
                     .world
@@ -52,6 +52,7 @@ pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>) {
     let mut written_chunks = 0;
     // The difference is the set of chunks that are in the cache but not visible to any player
     for chunk_pos in all_chunks.difference(&visible_chunks) {
+        save_entity_writer.write(temper_messages::save_chunk_entities::SaveChunkEntities(*chunk_pos));
         let removed_chunk = state
             .0
             .world
@@ -59,7 +60,7 @@ pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>) {
             .remove(&(*chunk_pos, Dimension::Overworld));
         match removed_chunk {
             Some(((pos, dim), chunk)) => {
-                let dirty = chunk.sections.iter().any(|section| section.dirty);
+                let dirty = chunk.is_dirty();
                 if dirty {
                     state
                         .0

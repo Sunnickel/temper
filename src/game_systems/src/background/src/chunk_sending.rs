@@ -1,4 +1,4 @@
-use bevy_ecs::prelude::{Entity, Query, Res};
+use bevy_ecs::prelude::{Entity, MessageWriter, Query, Res};
 use bevy_math::{IVec2, IVec3};
 use std::cmp::max;
 use std::sync::atomic::Ordering;
@@ -28,6 +28,7 @@ pub fn handle(
         &ClientInformationComponent,
     )>,
     state: Res<GlobalStateResource>,
+    mut mob_load_writer: MessageWriter<temper_messages::load_chunk_entities::LoadChunkEntities>,
 ) {
     for (eid, conn, mut chunk_receiver, pos, client_info) in query.iter_mut() {
         if !state.0.players.is_connected(eid) {
@@ -114,6 +115,16 @@ pub fn handle(
                 .loaded
                 .insert((coordinates.x(), coordinates.z()));
             let state = state.clone();
+            if !state
+                .0
+                .world
+                .get_cache()
+                .contains_key(&(coordinates, Dimension::Overworld))
+            {
+                mob_load_writer.write(temper_messages::load_chunk_entities::LoadChunkEntities(
+                    coordinates,
+                ));
+            }
             let is_compressed = conn.compress.load(Ordering::Relaxed);
             batch.execute({
                 move || {

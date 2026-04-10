@@ -11,6 +11,8 @@ use crate::heightmap::Heightmaps;
 use crate::section::{ChunkSection, AIR};
 use dashmap::DashMap;
 use serde_derive::{Deserialize, Serialize};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use temper_core::block_state_id::BlockStateId;
 use temper_core::pos::{ChunkBlockPos, ChunkHeight};
 use temper_entities::entity_types::EntityType;
@@ -27,6 +29,7 @@ pub struct Chunk {
     pub entities: DashMap<Uuid, (EntityType, Vec<u8>)>,
 
     heightmaps: Option<Heightmaps>,
+    dirty: Arc<AtomicBool>,
 }
 
 impl Chunk {
@@ -57,6 +60,7 @@ impl Chunk {
             height,
             entities: DashMap::new(),
             heightmaps: None,
+            dirty: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -81,7 +85,8 @@ impl Chunk {
             sections: sections.to_vec().into_boxed_slice(),
             height,
             heightmaps: None,
-            entities: DashMap::new()
+            entities: DashMap::new(),
+            dirty: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -155,6 +160,38 @@ impl Chunk {
 
         self.sections[section as usize].set_block(pos.section_block_pos(), id);
     }
+
+    /// Marks the chunk as dirty.
+    ///
+    /// This indicates that the chunk has been modified and may need to be saved or updated.
+    pub fn mark_dirty(&self) {
+        self.dirty.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Checks if the chunk is dirty.
+    ///
+    /// A chunk is considered dirty if it has been marked as dirty or if any of its sections are dirty.
+    /// A dirty chunk may need to be saved or updated.
+    pub fn is_dirty(&self) -> bool {
+        self.dirty.load(std::sync::atomic::Ordering::Relaxed)
+            || self
+                .sections
+                .iter()
+                .any(|s| s.dirty.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    /// Clears the dirty state of the chunk and all of its sections.
+    ///
+    /// This should be called after saving or updating a chunk to indicate that it is no longer dirty.
+    pub fn clear_dirty(&self) {
+        self.dirty
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        for section in &self.sections {
+            section
+                .dirty
+                .store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
 }
 
 impl TryFrom<&VanillaChunk> for Chunk {
@@ -186,7 +223,8 @@ impl TryFrom<&VanillaChunk> for Chunk {
                 .heightmaps
                 .as_ref()
                 .and_then(|v| Heightmaps::try_from(v).ok()),
-            entities: DashMap::new()
+            entities: DashMap::new(),
+            dirty: Arc::new(AtomicBool::new(false)),
         })
     }
 }
