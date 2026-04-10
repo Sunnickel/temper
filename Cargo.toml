@@ -152,7 +152,7 @@ temper-game-systems = { path = "src/game_systems" }
 interactions = { path = "src/game_systems/src/interactions" }
 
 # Asynchronous
-tokio = { version = "1.50.0", features = [
+tokio = { version = "1.51.1", features = [
     "macros",
     "net",
     "rt",
@@ -204,7 +204,7 @@ base64 = "0.22.1"
 
 bitcode = "0.6.9"
 bitcode_derive = "0.6.9"
-toml = "1.1.0+spec-1.1.0"
+toml = "1.1.2+spec-1.1.0"
 craftflow-nbt = "2.1.0"
 figment = { version = "0.10.19", features = ["toml", "env"] }
 simd-json = "0.17.0"
@@ -217,7 +217,7 @@ byteorder = "1.5.0"
 # Data types
 dashmap = { version = "7.0.0-rc2", features = ["serde"] }
 uuid = { version = "1.23.0", features = ["v4", "v3", "serde"] }
-indexmap = { version = "2.13.0", features = ["serde"] }
+indexmap = { version = "2.14.0", features = ["serde"] }
 bimap = "0.6.3"
 
 # Macros
@@ -232,14 +232,14 @@ type_hash = "0.3.0"
 
 # Magic
 dhat = "0.3.3"
-ctor = "0.8.0"
+ctor = "0.9.1"
 
 # Compression/Decompression
 yazi = "0.2.1"
 flate2 = "1.1.9"
 
 # Database
-heed = "0.22.1-nested-rtxns-7"
+heed = "0.22.1"
 
 # Misc
 deepsize = "0.2.0"
@@ -258,9 +258,9 @@ mime_guess = "2.0.5"
 ## TUI/CLI
 crossterm = "0.29.0"
 ratatui-core = "0.1.0"
-tui-input = "0.15.0"
+tui-input = "0.15.1"
 ratatui = "0.30.0"
-tui-logger = { version = "0.18.1", features = ["tracing-support", "crossterm"] }
+tui-logger = { version = "0.18.2", features = ["tracing-support", "crossterm"] }
 clap = { version = "4.6.0", features = ["derive", "env"] }
 indicatif = "0.18.4"
 colored = "3.1.1"
