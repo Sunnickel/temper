@@ -14,6 +14,9 @@ world = { path = "./src/world" }
 interactions = { path = "./src/interactions" }
 
 bevy_ecs = { workspace = true }
+temper-commands = { workspace = true }
+temper-config = { workspace = true }
+temper-scheduler = { workspace = true }
 
 [lints]
 workspace = true

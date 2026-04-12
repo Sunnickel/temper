@@ -1,10 +1,156 @@
-pub use background::{
-    chunk_unloader, keep_alive_system, lan_pinger::LanPinger, register_background_systems,
-    world_sync,
-};
-pub use mobs::register_mob_systems;
-pub use packets::register_packet_handlers;
-pub use physics::register_physics_systems;
-pub use player::{register_player_systems, update_player_ping};
-pub use shutdown::register_shutdown_systems;
-pub use world::register_world_systems;
+use bevy_ecs::prelude::ApplyDeferred;
+use bevy_ecs::schedule::{ExecutorKind, IntoScheduleConfigs, Schedule};
+use std::time::Duration;
+use temper_commands::infrastructure::register_command_systems;
+use temper_config::server_config::get_global_config;
+use temper_scheduler::{MissedTickBehavior, Scheduler, TimedSchedule, drain_registered_schedules};
+
+pub use background::lan_pinger::LanPinger;
+
+// TODO: Clean this up with bevy's app thing
+fn register_tick_systems(schedule: &mut Schedule) {
+    schedule.add_systems(packets::chunk_batch_ack::handle);
+    schedule.add_systems(packets::confirm_player_teleport::handle);
+    schedule.add_systems(packets::keep_alive::handle);
+    schedule.add_systems(packets::place_block::handle);
+    schedule.add_systems(interactions::interaction_listener::handle_block_interact);
+    schedule.add_systems(interactions::door_interaction::handle_door_toggled);
+    schedule.add_systems(packets::player_action::handle);
+    schedule.add_systems(packets::player_command::handle);
+    schedule.add_systems(packets::player_input::handle);
+    schedule.add_systems(packets::set_player_position::handle);
+    schedule.add_systems(packets::set_player_position_and_rotation::handle);
+    schedule.add_systems(packets::set_player_rotation::handle);
+    schedule.add_systems(packets::swing_arm::handle);
+    schedule.add_systems(packets::update_survival_mode_slot::handle);
+    schedule.add_systems(packets::close_container::handle);
+    schedule.add_systems(packets::player_loaded::handle);
+    schedule.add_systems(packets::command::handle);
+    schedule.add_systems(packets::command_suggestions::handle);
+    schedule.add_systems(packets::chat_message::handle);
+    schedule.add_systems(packets::set_creative_mode_slot::handle);
+    schedule.add_systems(packets::set_held_item::handle);
+    schedule.add_systems(packets::player_abilities::handle);
+    schedule.add_systems(packets::change_game_mode::handle);
+    schedule.add_systems(packets::pick_item_from_block::handle);
+
+    schedule.add_systems(player::digging_system::handle_start_digging);
+    schedule.add_systems(player::digging_system::handle_finish_digging);
+    schedule.add_systems(player::digging_system::handle_start_digging);
+    schedule.add_systems(player::digging_system::handle_cancel_digging);
+    schedule.add_systems(player::entity_spawn::handle_spawn_entity);
+    schedule.add_systems(player::entity_spawn::spawn_command_processor);
+    schedule.add_systems(player::gamemode_change::handle);
+    schedule.add_systems(player::movement_broadcast::handle_player_move);
+
+    schedule.add_systems(
+        (
+            player::new_connections::accept_new_connections,
+            ApplyDeferred,
+            player::chunk_calculator::handle,
+            player::emit_player_joined::emit_player_joined,
+        )
+            .chain(),
+    );
+    schedule.add_systems(player::player_despawn::handle);
+    schedule.add_systems(player::player_join_message::handle);
+    schedule.add_systems(player::player_leave_message::handle);
+    schedule.add_systems(player::player_spawn::handle);
+    schedule.add_systems(player::player_swimming::detect_player_swimming);
+    schedule.add_systems(player::player_tp::teleport_player);
+    schedule.add_systems(player::send_inventory_updates::handle_inventory_updates);
+
+    register_command_systems(schedule);
+
+    schedule.add_systems(background::chunk_sending::handle);
+    schedule.add_systems(background::connection_killer::connection_killer);
+    schedule.add_systems(background::day_cycle::tick_daylight_cycle);
+    schedule.add_systems(background::mq::process);
+    schedule.add_systems(background::send_entity_updates::handle);
+    schedule.add_systems(background::server_command::handle);
+    schedule.add_systems(background::entity_sending::send_new_entities);
+
+    schedule.add_systems(
+        (
+            physics::unground::handle,
+            physics::gravity::handle,
+            physics::drag::handle,
+            physics::velocity::handle,
+            physics::collisions::handle,
+        )
+            .chain(),
+    );
+
+    schedule.add_systems(mobs::pig::tick_pig);
+    schedule.add_systems(mobs::pig::load_pig);
+
+    schedule.add_systems(world::particles::handle);
+}
+
+fn register_world_sync_schedule_systems(schedule: &mut Schedule) {
+    schedule.add_systems(background::world_sync::sync_world);
+}
+
+fn register_chunk_gc_schedule_systems(schedule: &mut Schedule) {
+    schedule.add_systems(background::chunk_unloader::handle);
+}
+
+fn register_keepalive_schedule_systems(schedule: &mut Schedule) {
+    schedule.add_systems(background::keep_alive_system::keep_alive_system);
+    schedule.add_systems(player::update_player_ping::handle);
+}
+
+pub fn register_schedules(timed: &mut Scheduler, shutdown_schedule: &mut Schedule) {
+    let build_tick = |schedule: &mut Schedule| {
+        schedule.set_executor_kind(ExecutorKind::SingleThreaded);
+        register_tick_systems(schedule);
+    };
+    let tick_period = Duration::from_secs(1) / get_global_config().tps;
+    timed.register(
+        TimedSchedule::new("tick", tick_period, build_tick)
+            .with_behavior(MissedTickBehavior::Burst)
+            .with_max_catch_up(5),
+    );
+
+    timed.register(
+        TimedSchedule::new(
+            "world_sync",
+            Duration::from_secs(15),
+            register_world_sync_schedule_systems,
+        )
+        .with_behavior(MissedTickBehavior::Skip),
+    );
+
+    timed.register(
+        TimedSchedule::new(
+            "chunk_gc",
+            Duration::from_secs(5),
+            register_chunk_gc_schedule_systems,
+        )
+        .with_behavior(MissedTickBehavior::Skip),
+    );
+
+    timed.register(
+        TimedSchedule::new(
+            "keepalive",
+            Duration::from_secs(1),
+            register_keepalive_schedule_systems,
+        )
+        .with_behavior(MissedTickBehavior::Skip)
+        .with_phase(Duration::from_millis(250)),
+    );
+
+    shutdown_schedule.add_systems(
+        (
+            shutdown::send_save_message::send_save_message,
+            (mobs::pig::save_pig,),
+            background::world_sync::sync_world,
+        )
+            .chain(),
+    );
+    shutdown_schedule.add_systems(shutdown::send_shutdown_packet::handle);
+
+    for pending in drain_registered_schedules() {
+        timed.register(pending.into_timed());
+    }
+}

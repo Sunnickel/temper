@@ -87,7 +87,6 @@ impl MobCategory {
         }
     }
 }
-
 impl EntityType {
     pub const ACACIA_BOAT: EntityType = EntityType {
         id: 0,
