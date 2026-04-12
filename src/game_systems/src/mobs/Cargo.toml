@@ -16,3 +16,4 @@ temper-protocol = { workspace = true }
 temper-net-runtime = { workspace = true }
 temper-macros = { workspace = true }
 temper-config = { workspace = true }
+paste = { workspace = true }

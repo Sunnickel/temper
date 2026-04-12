@@ -1,28 +1,38 @@
-use bevy_ecs::prelude::{Commands, MessageReader, Query, Res, With};
+use bevy_ecs::prelude::{Query, With};
 use temper_components::combat::CombatProperties;
 use temper_components::entity_identity::Identity;
 use temper_components::last_synced_position::LastSyncedPosition;
 use temper_components::metadata::EntityMetadata;
-use temper_components::player::client_information::ClientInformationComponent;
 use temper_components::player::grounded::OnGround;
-use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
 use temper_components::player::velocity::Velocity;
 use temper_components::spawn::SpawnProperties;
-use temper_core::dimension::Dimension::Overworld;
-use temper_entities::entity_types::EntityTypeEnum;
 use temper_entities::markers::entity_types::Pig;
 use temper_entities::PigBundle;
-use temper_messages::load_chunk_entities::LoadChunkEntities;
-use temper_messages::save_chunk_entities::SaveChunkEntities;
-use temper_net_runtime::connection::StreamWriter;
-use temper_state::GlobalStateResource;
-use tracing::debug;
 
 #[expect(unused_variables)]
 pub fn tick_pig(query: Query<&Position, With<Pig>>, players: Query<&Position, With<Identity>>) {}
 
+crate::define_entity_save_load!(
+    pig,
+    marker = Pig,
+    bundle = PigBundle,
+    entity_type = Pig,
+    fields = {
+        identity: Identity => clone,
+        metadata: EntityMetadata => copy,
+        combat: CombatProperties => copy,
+        spawn: SpawnProperties => clone,
+        position: Position => copy,
+        rotation: Rotation => copy,
+        velocity: Velocity => copy,
+        on_ground: OnGround => copy,
+        last_synced_position: LastSyncedPosition => copy,
+    }
+);
+
+/*
 type PigQuery<'a> = (
     &'a Identity,
     &'a EntityMetadata,
@@ -101,3 +111,4 @@ pub fn load_pig(
         }
     }
 }
+*/
