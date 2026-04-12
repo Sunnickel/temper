@@ -15,7 +15,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use temper_core::block_state_id::BlockStateId;
 use temper_core::pos::{ChunkBlockPos, ChunkHeight};
-use temper_entities::entity_types::EntityType;
+use temper_entities::entity_types::EntityTypeEnum;
 use temper_macros::block;
 use type_hash::TypeHash;
 use uuid::Uuid;
@@ -26,7 +26,7 @@ pub struct Chunk {
     pub sections: Box<[ChunkSection]>,
     height: ChunkHeight,
     #[type_hash(foreign_type)]
-    pub entities: DashMap<Uuid, (EntityType, Vec<u8>)>,
+    pub entities: DashMap<Uuid, (EntityTypeEnum, Vec<u8>)>,
 
     heightmaps: Option<Heightmaps>,
     dirty: Arc<AtomicBool>,

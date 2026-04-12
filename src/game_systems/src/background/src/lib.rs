@@ -2,6 +2,7 @@ pub mod chunk_sending;
 pub mod chunk_unloader;
 pub mod connection_killer;
 pub mod day_cycle;
+pub mod entity_sending;
 pub mod keep_alive_system;
 pub mod lan_pinger;
 pub mod mq;
@@ -16,4 +17,5 @@ pub fn register_background_systems(schedule: &mut bevy_ecs::prelude::Schedule) {
     schedule.add_systems(mq::process);
     schedule.add_systems(send_entity_updates::handle);
     schedule.add_systems(server_command::handle);
+    schedule.add_systems(entity_sending::send_new_entities);
 }

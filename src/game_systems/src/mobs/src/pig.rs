@@ -12,9 +12,9 @@ use temper_components::player::velocity::Velocity;
 use temper_components::spawn::SpawnProperties;
 use temper_config::server_config::get_global_config;
 use temper_core::dimension::Dimension::Overworld;
-use temper_entities::PigBundle;
-use temper_entities::entity_types::EntityType;
+use temper_entities::entity_types::EntityTypeEnum;
 use temper_entities::markers::entity_types::Pig;
+use temper_entities::PigBundle;
 use temper_macros::get_registry_entry;
 use temper_messages::load_chunk_entities::LoadChunkEntities;
 use temper_messages::save_chunk_entities::SaveChunkEntities;
@@ -68,7 +68,7 @@ pub fn save_pig(
             chunk.entities.insert(
                 identity.uuid,
                 (
-                    EntityType::Pig,
+                    EntityTypeEnum::Pig,
                     bitcode::serialize(&bundle).expect("Failed to serialize pig bundle"),
                 ),
             );
@@ -95,52 +95,10 @@ pub fn load_pig(
                 "Loading entity of type {:?} from chunk {}",
                 entity_type, message.0
             );
-            if *entity_type == EntityType::Pig {
+            if *entity_type == EntityTypeEnum::Pig {
                 let bundle: PigBundle =
                     bitcode::deserialize(data).expect("Failed to deserialize pig bundle");
-                let spawn_packet = temper_protocol::outgoing::spawn_entity::SpawnEntityPacket::new(
-                    bundle.identity.entity_id,
-                    bundle.identity.uuid.clone().as_u128(),
-                    get_registry_entry!("minecraft:entity_type.entries.minecraft:pig") as i32,
-                    &bundle.position,
-                    &bundle.rotation,
-                );
-                for (conn, player_pos, client_info) in players.iter() {
-                    let view_distance = client_info
-                        .view_distance
-                        .min(get_global_config().chunk_render_distance as u8);
-
-                    if player_pos.distance(*bundle.position) < (view_distance as f64 * 16.0) {
-                        conn.send_packet_ref(&spawn_packet)
-                            .expect("Failed to send pig spawn packet");
-                    }
-                }
                 cmd.spawn((bundle, Pig));
-            }
-        }
-    }
-}
-
-pub fn announce_new_spawned_pig(
-    query: Query<(&Identity, &Position, &Rotation), Added<Pig>>,
-    players: Query<(&StreamWriter, &Position, &ClientInformationComponent), With<PlayerMarker>>,
-) {
-    for (identity, pos, rot) in query.iter() {
-        let spawn_packet = temper_protocol::outgoing::spawn_entity::SpawnEntityPacket::new(
-            identity.entity_id,
-            identity.uuid.as_u128(),
-            get_registry_entry!("minecraft:entity_type.entries.minecraft:pig") as i32,
-            pos,
-            rot,
-        );
-        for (conn, player_pos, client_info) in players.iter() {
-            let view_distance = client_info
-                .view_distance
-                .min(get_global_config().chunk_render_distance as u8);
-
-            if player_pos.distance(**pos) < (view_distance as f64 * 16.0) {
-                conn.send_packet_ref(&spawn_packet)
-                    .expect("Failed to send pig spawn packet");
             }
         }
     }

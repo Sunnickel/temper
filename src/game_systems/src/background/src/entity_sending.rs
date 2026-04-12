@@ -1,0 +1,62 @@
+use bevy_ecs::prelude::{Entity, Query};
+use temper_components::entity_identity::Identity;
+use temper_components::player::client_information::ClientInformationComponent;
+use temper_components::player::entity_tracker::EntityTracker;
+use temper_components::player::position::Position;
+use temper_components::player::rotation::Rotation;
+use temper_config::server_config::get_global_config;
+use temper_net_runtime::connection::StreamWriter;
+use temper_protocol::outgoing::spawn_entity::SpawnEntityPacket;
+use tracing::debug;
+
+pub fn send_new_entities(
+    mut player_query: Query<(
+        &StreamWriter,
+        &mut EntityTracker,
+        &Position,
+        &ClientInformationComponent,
+    )>,
+    entity_query: Query<(Entity, &Identity, &Position, &Rotation)>,
+) {
+    for (conn, mut entity_tracker, player_pos, client_info) in player_query.iter_mut() {
+        while let Some((uuid, entity_type_id)) = entity_tracker.to_track.pop() {
+            if let Some((entity, identity, entity_pos, rot)) =
+                entity_query
+                    .iter()
+                    .find_map(|(entity, identity, pos, rot)| {
+                        if identity.uuid == uuid {
+                            Some((entity, identity, pos, rot))
+                        } else {
+                            None
+                        }
+                    })
+            {
+                let render_distance = client_info
+                    .view_distance
+                    .min(get_global_config().chunk_render_distance as u8);
+                if player_pos.distance(**entity_pos) > (render_distance as f64 * 16.0) {
+                    continue; // Skip entities outside of render distance
+                }
+                let packet = SpawnEntityPacket::new(
+                    identity.entity_id,
+                    identity.uuid.as_u128(),
+                    entity_type_id as i32,
+                    entity_pos,
+                    rot,
+                );
+                conn.send_packet(packet)
+                    .expect("Failed to send spawn entity packet");
+                debug!(
+                    "Sent spawn packet for entity {} with UUID {} to player at position {:?}",
+                    identity.entity_id,
+                    identity.uuid,
+                    player_pos.xyz()
+                );
+                entity_tracker.tracking.insert(entity);
+            } else {
+                // Reinsert into the queue if the entity is not found, it might be added in a future tick
+                entity_tracker.to_track.push((uuid, entity_type_id));
+            }
+        }
+    }
+}

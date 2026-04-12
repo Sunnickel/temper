@@ -1,10 +1,11 @@
 use bevy_ecs::prelude::*;
 use temper_components::entity_identity::Identity;
+use temper_components::player::entity_tracker::EntityTracker;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
 use temper_entities::bundles::*;
 use temper_entities::components::EntityMetadata;
-use temper_entities::entity_types::EntityType;
+use temper_entities::entity_types::EntityTypeEnum;
 use temper_entities::markers::entity_types::*;
 use temper_entities::markers::{HasCollisions, HasGravity, HasWaterDrag};
 use temper_messages::{SpawnEntityCommand, SpawnEntityEvent};
@@ -15,8 +16,9 @@ use tracing::{error, warn};
 
 /// Macro for spawning ground entities (gravity + collisions + water drag)
 macro_rules! spawn_ground_entity {
-    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path) => {{
+    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path, $Query:ident) => {{
         let bundle = $Bundle::new($position);
+        let uuid = bundle.identity.uuid;
         let chunk = $State
             .world
             .get_or_generate_chunk(
@@ -25,26 +27,25 @@ macro_rules! spawn_ground_entity {
             )
             .expect("Failed to get or generate chunk");
         chunk.entities.insert(
-            bundle.identity.uuid,
+            uuid,
             (
                 $EType,
                 bitcode::serialize(&bundle).expect("Failed to serialize entity bundle"),
             ),
         );
         chunk.mark_dirty();
-        let entity = $commands
-            .spawn((bundle, $Marker, HasGravity, HasCollisions, HasWaterDrag))
-            .id();
-        $commands.queue(move |world: &mut World| {
-            broadcast_entity_spawn(world, entity);
+        $commands.spawn((bundle, $Marker, HasGravity, HasCollisions, HasWaterDrag));
+        $Query.iter().for_each(|tracker| {
+            tracker.to_track.push((uuid, $EType.to_entity_type().id));
         });
     }};
 }
 
 /// Macro for spawning flying/swimming entities (collisions only)
 macro_rules! spawn_flying_entity {
-    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path) => {{
+    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path, $Query:ident) => {{
         let bundle = $Bundle::new($position);
+        let uuid = bundle.identity.uuid;
         let chunk = $State
             .world
             .get_or_generate_chunk(
@@ -53,24 +54,25 @@ macro_rules! spawn_flying_entity {
             )
             .expect("Failed to get or generate chunk");
         chunk.entities.insert(
-            bundle.identity.uuid,
+            uuid,
             (
                 $EType,
                 bitcode::serialize(&bundle).expect("Failed to serialize entity bundle"),
             ),
         );
         chunk.mark_dirty();
-        let entity = $commands.spawn((bundle, $Marker, HasCollisions)).id();
-        $commands.queue(move |world: &mut World| {
-            broadcast_entity_spawn(world, entity);
+        $commands.spawn((bundle, $Marker, HasCollisions));
+        $Query.iter().for_each(|tracker| {
+            tracker.to_track.push((uuid, $EType.to_entity_type().id));
         });
     }};
 }
 
 /// Macro for spawning entities with gravity but no water drag (lava/amphibian creatures)
 macro_rules! spawn_gravity_entity {
-    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path) => {{
+    ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path, $Query:ident) => {{
         let bundle = $Bundle::new($position);
+        let uuid = bundle.identity.uuid;
         let chunk = $State
             .world
             .get_or_generate_chunk(
@@ -79,84 +81,18 @@ macro_rules! spawn_gravity_entity {
             )
             .expect("Failed to get or generate chunk");
         chunk.entities.insert(
-            bundle.identity.uuid,
+            uuid,
             (
                 $EType,
                 bitcode::serialize(&bundle).expect("Failed to serialize entity bundle"),
             ),
         );
         chunk.mark_dirty();
-        let entity = $commands
-            .spawn((bundle, $Marker, HasGravity, HasCollisions))
-            .id();
-        $commands.queue(move |world: &mut World| {
-            broadcast_entity_spawn(world, entity);
+        $commands.spawn((bundle, $Marker, HasGravity, HasCollisions));
+        $Query.iter().for_each(|tracker| {
+            tracker.to_track.push((uuid, $EType.to_entity_type().id));
         });
     }};
-}
-
-/// Helper function to broadcast entity spawn packets to all connected players.
-///
-/// This function queries the entity's components and sends the spawn packet
-/// to all players. It's generic and works for any entity type.
-///
-/// # Arguments
-///
-/// * `world` - The Bevy world
-/// * `entity` - The entity to broadcast
-///
-/// TODO: This should be removed in favor of the automated sending in the mobs systems
-fn broadcast_entity_spawn(world: &mut World, entity: Entity) {
-    // Get entity components
-    let metadata = match world.get::<EntityMetadata>(entity) {
-        Some(m) => m,
-        None => {
-            error!("Failed to get entity metadata for {:?}", entity);
-            return;
-        }
-    };
-    let protocol_id = metadata.protocol_id();
-
-    let identity = match world.get::<Identity>(entity) {
-        Some(i) => i,
-        None => {
-            error!("Failed to get entity identity for {:?}", entity);
-            return;
-        }
-    };
-
-    let position = match world.get::<Position>(entity) {
-        Some(p) => p,
-        None => {
-            error!("Failed to get entity position for {:?}", entity);
-            return;
-        }
-    };
-
-    let rotation = match world.get::<Rotation>(entity) {
-        Some(r) => r,
-        None => {
-            error!("Failed to get entity rotation for {:?}", entity);
-            return;
-        }
-    };
-
-    // Create spawn packet
-    let spawn_packet = SpawnEntityPacket::new(
-        identity.entity_id,
-        identity.uuid.as_u128(),
-        protocol_id as i32,
-        position,
-        rotation,
-    );
-
-    // Broadcast to all connected players
-    let mut writer_query = world.query::<&StreamWriter>();
-    for writer in writer_query.iter(world) {
-        if let Err(e) = writer.send_packet_ref(&spawn_packet) {
-            error!("Failed to send spawn packet: {:?}", e);
-        }
-    }
 }
 
 /// System that processes spawn commands from messages
@@ -191,574 +127,829 @@ pub fn handle_spawn_entity(
     mut events: MessageReader<SpawnEntityEvent>,
     mut commands: Commands,
     state: Res<GlobalStateResource>,
+    query: Query<&EntityTracker>,
 ) {
     for event in events.read() {
         let pos = event.position;
         let state = state.0.clone();
         match event.entity_type {
             // Ground entities (gravity + collisions + water drag)
-            EntityType::Pig => {
-                spawn_ground_entity!(commands, pos, PigBundle, Pig, state, EntityType::Pig)
+            EntityTypeEnum::Pig => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    PigBundle,
+                    Pig,
+                    state,
+                    EntityTypeEnum::Pig,
+                    query
+                )
             }
-            EntityType::Cow => {
-                spawn_ground_entity!(commands, pos, CowBundle, Cow, state, EntityType::Cow)
+            EntityTypeEnum::Cow => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    CowBundle,
+                    Cow,
+                    state,
+                    EntityTypeEnum::Cow,
+                    query
+                )
             }
-            EntityType::Armadillo => {
+            EntityTypeEnum::Armadillo => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     ArmadilloBundle,
                     Armadillo,
                     state,
-                    EntityType::Armadillo
+                    EntityTypeEnum::Armadillo,
+                    query
                 )
             }
-            EntityType::Camel => {
-                spawn_ground_entity!(commands, pos, CamelBundle, Camel, state, EntityType::Camel)
+            EntityTypeEnum::Camel => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    CamelBundle,
+                    Camel,
+                    state,
+                    EntityTypeEnum::Camel,
+                    query
+                )
             }
-            EntityType::Cat => {
-                spawn_ground_entity!(commands, pos, CatBundle, Cat, state, EntityType::Cat)
+            EntityTypeEnum::Cat => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    CatBundle,
+                    Cat,
+                    state,
+                    EntityTypeEnum::Cat,
+                    query
+                )
             }
-            EntityType::CaveSpider => {
+            EntityTypeEnum::CaveSpider => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     CaveSpiderBundle,
                     CaveSpider,
                     state,
-                    EntityType::CaveSpider
+                    EntityTypeEnum::CaveSpider,
+                    query
                 )
             }
-            EntityType::Chicken => spawn_ground_entity!(
+            EntityTypeEnum::Chicken => spawn_ground_entity!(
                 commands,
                 pos,
                 ChickenBundle,
                 Chicken,
                 state,
-                EntityType::Chicken
+                EntityTypeEnum::Chicken,
+                query
             ),
-            EntityType::Donkey => spawn_ground_entity!(
+            EntityTypeEnum::Donkey => spawn_ground_entity!(
                 commands,
                 pos,
                 DonkeyBundle,
                 Donkey,
                 state,
-                EntityType::Donkey
+                EntityTypeEnum::Donkey,
+                query
             ),
-            EntityType::Enderman => spawn_ground_entity!(
+            EntityTypeEnum::Enderman => spawn_ground_entity!(
                 commands,
                 pos,
                 EndermanBundle,
                 Enderman,
                 state,
-                EntityType::Enderman
+                EntityTypeEnum::Enderman,
+                query
             ),
-            EntityType::Fox => {
-                spawn_ground_entity!(commands, pos, FoxBundle, Fox, state, EntityType::Fox)
+            EntityTypeEnum::Fox => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    FoxBundle,
+                    Fox,
+                    state,
+                    EntityTypeEnum::Fox,
+                    query
+                )
             }
-            EntityType::Frog => {
-                spawn_ground_entity!(commands, pos, FrogBundle, Frog, state, EntityType::Frog)
+            EntityTypeEnum::Frog => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    FrogBundle,
+                    Frog,
+                    state,
+                    EntityTypeEnum::Frog,
+                    query
+                )
             }
-            EntityType::Goat => {
-                spawn_ground_entity!(commands, pos, GoatBundle, Goat, state, EntityType::Goat)
+            EntityTypeEnum::Goat => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    GoatBundle,
+                    Goat,
+                    state,
+                    EntityTypeEnum::Goat,
+                    query
+                )
             }
-            EntityType::Horse => {
-                spawn_ground_entity!(commands, pos, HorseBundle, Horse, state, EntityType::Horse)
+            EntityTypeEnum::Horse => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    HorseBundle,
+                    Horse,
+                    state,
+                    EntityTypeEnum::Horse,
+                    query
+                )
             }
-            EntityType::IronGolem => {
+            EntityTypeEnum::IronGolem => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     IronGolemBundle,
                     IronGolem,
                     state,
-                    EntityType::IronGolem
+                    EntityTypeEnum::IronGolem,
+                    query
                 )
             }
-            EntityType::Llama => {
-                spawn_ground_entity!(commands, pos, LlamaBundle, Llama, state, EntityType::Llama)
+            EntityTypeEnum::Llama => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    LlamaBundle,
+                    Llama,
+                    state,
+                    EntityTypeEnum::Llama,
+                    query
+                )
             }
-            EntityType::Mooshroom => {
+            EntityTypeEnum::Mooshroom => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     MooshroomBundle,
                     Mooshroom,
                     state,
-                    EntityType::Mooshroom
+                    EntityTypeEnum::Mooshroom,
+                    query
                 )
             }
-            EntityType::Mule => {
-                spawn_ground_entity!(commands, pos, MuleBundle, Mule, state, EntityType::Mule)
+            EntityTypeEnum::Mule => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    MuleBundle,
+                    Mule,
+                    state,
+                    EntityTypeEnum::Mule,
+                    query
+                )
             }
-            EntityType::Ocelot => spawn_ground_entity!(
+            EntityTypeEnum::Ocelot => spawn_ground_entity!(
                 commands,
                 pos,
                 OcelotBundle,
                 Ocelot,
                 state,
-                EntityType::Ocelot
+                EntityTypeEnum::Ocelot,
+                query
             ),
-            EntityType::Panda => {
-                spawn_ground_entity!(commands, pos, PandaBundle, Panda, state, EntityType::Panda)
+            EntityTypeEnum::Panda => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    PandaBundle,
+                    Panda,
+                    state,
+                    EntityTypeEnum::Panda,
+                    query
+                )
             }
-            EntityType::Piglin => spawn_ground_entity!(
+            EntityTypeEnum::Piglin => spawn_ground_entity!(
                 commands,
                 pos,
                 PiglinBundle,
                 Piglin,
                 state,
-                EntityType::Piglin
+                EntityTypeEnum::Piglin,
+                query
             ),
-            EntityType::PolarBear => {
+            EntityTypeEnum::PolarBear => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     PolarBearBundle,
                     PolarBear,
                     state,
-                    EntityType::PolarBear
+                    EntityTypeEnum::PolarBear,
+                    query
                 )
             }
-            EntityType::Rabbit => spawn_ground_entity!(
+            EntityTypeEnum::Rabbit => spawn_ground_entity!(
                 commands,
                 pos,
                 RabbitBundle,
                 Rabbit,
                 state,
-                EntityType::Rabbit
+                EntityTypeEnum::Rabbit,
+                query
             ),
-            EntityType::Sheep => {
-                spawn_ground_entity!(commands, pos, SheepBundle, Sheep, state, EntityType::Sheep)
+            EntityTypeEnum::Sheep => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    SheepBundle,
+                    Sheep,
+                    state,
+                    EntityTypeEnum::Sheep,
+                    query
+                )
             }
-            EntityType::SkeletonHorse => {
+            EntityTypeEnum::SkeletonHorse => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     SkeletonHorseBundle,
                     SkeletonHorse,
                     state,
-                    EntityType::SkeletonHorse
+                    EntityTypeEnum::SkeletonHorse,
+                    query
                 )
             }
-            EntityType::Sniffer => spawn_ground_entity!(
+            EntityTypeEnum::Sniffer => spawn_ground_entity!(
                 commands,
                 pos,
                 SnifferBundle,
                 Sniffer,
                 state,
-                EntityType::Sniffer
+                EntityTypeEnum::Sniffer,
+                query
             ),
-            EntityType::Spider => spawn_ground_entity!(
+            EntityTypeEnum::Spider => spawn_ground_entity!(
                 commands,
                 pos,
                 SpiderBundle,
                 Spider,
                 state,
-                EntityType::Spider
+                EntityTypeEnum::Spider,
+                query
             ),
-            EntityType::SnowGolem => {
+            EntityTypeEnum::SnowGolem => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     SnowGolemBundle,
                     SnowGolem,
                     state,
-                    EntityType::SnowGolem
+                    EntityTypeEnum::SnowGolem,
+                    query
                 )
             }
-            EntityType::TraderLlama => {
+            EntityTypeEnum::TraderLlama => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     TraderLlamaBundle,
                     TraderLlama,
                     state,
-                    EntityType::TraderLlama
+                    EntityTypeEnum::TraderLlama,
+                    query
                 )
             }
-            EntityType::Turtle => spawn_ground_entity!(
+            EntityTypeEnum::Turtle => spawn_ground_entity!(
                 commands,
                 pos,
                 TurtleBundle,
                 Turtle,
                 state,
-                EntityType::Turtle
+                EntityTypeEnum::Turtle,
+                query
             ),
-            EntityType::Villager => spawn_ground_entity!(
+            EntityTypeEnum::Villager => spawn_ground_entity!(
                 commands,
                 pos,
                 VillagerBundle,
                 Villager,
                 state,
-                EntityType::Villager
+                EntityTypeEnum::Villager,
+                query
             ),
-            EntityType::WanderingTrader => {
+            EntityTypeEnum::WanderingTrader => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     WanderingTraderBundle,
                     WanderingTrader,
                     state,
-                    EntityType::WanderingTrader
+                    EntityTypeEnum::WanderingTrader,
+                    query
                 )
             }
-            EntityType::Wolf => {
-                spawn_ground_entity!(commands, pos, WolfBundle, Wolf, state, EntityType::Wolf)
+            EntityTypeEnum::Wolf => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    WolfBundle,
+                    Wolf,
+                    state,
+                    EntityTypeEnum::Wolf,
+                    query
+                )
             }
-            EntityType::ZombieHorse => {
+            EntityTypeEnum::ZombieHorse => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     ZombieHorseBundle,
                     ZombieHorse,
                     state,
-                    EntityType::ZombieHorse
+                    EntityTypeEnum::ZombieHorse,
+                    query
                 )
             }
-            EntityType::ZombifiedPiglin => {
+            EntityTypeEnum::ZombifiedPiglin => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     ZombifiedPiglinBundle,
                     ZombifiedPiglin,
                     state,
-                    EntityType::ZombifiedPiglin
+                    EntityTypeEnum::ZombifiedPiglin,
+                    query
                 )
             }
 
             // Flying entities (collisions only)
-            EntityType::Allay => {
-                spawn_flying_entity!(commands, pos, AllayBundle, Allay, state, EntityType::Allay)
+            EntityTypeEnum::Allay => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    AllayBundle,
+                    Allay,
+                    state,
+                    EntityTypeEnum::Allay,
+                    query
+                )
             }
-            EntityType::Bat => {
-                spawn_flying_entity!(commands, pos, BatBundle, Bat, state, EntityType::Bat)
+            EntityTypeEnum::Bat => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    BatBundle,
+                    Bat,
+                    state,
+                    EntityTypeEnum::Bat,
+                    query
+                )
             }
-            EntityType::Bee => {
-                spawn_flying_entity!(commands, pos, BeeBundle, Bee, state, EntityType::Bee)
+            EntityTypeEnum::Bee => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    BeeBundle,
+                    Bee,
+                    state,
+                    EntityTypeEnum::Bee,
+                    query
+                )
             }
-            EntityType::Parrot => spawn_flying_entity!(
+            EntityTypeEnum::Parrot => spawn_flying_entity!(
                 commands,
                 pos,
                 ParrotBundle,
                 Parrot,
                 state,
-                EntityType::Parrot
+                EntityTypeEnum::Parrot,
+                query
             ),
 
             // Water creatures (collisions only, no gravity/water drag)
-            EntityType::Cod => {
-                spawn_flying_entity!(commands, pos, CodBundle, Cod, state, EntityType::Cod)
+            EntityTypeEnum::Cod => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    CodBundle,
+                    Cod,
+                    state,
+                    EntityTypeEnum::Cod,
+                    query
+                )
             }
-            EntityType::Dolphin => spawn_flying_entity!(
+            EntityTypeEnum::Dolphin => spawn_flying_entity!(
                 commands,
                 pos,
                 DolphinBundle,
                 Dolphin,
                 state,
-                EntityType::Dolphin
+                EntityTypeEnum::Dolphin,
+                query
             ),
-            EntityType::Drowned => spawn_flying_entity!(
+            EntityTypeEnum::Drowned => spawn_flying_entity!(
                 commands,
                 pos,
                 DrownedBundle,
                 Drowned,
                 state,
-                EntityType::Drowned
+                EntityTypeEnum::Drowned,
+                query
             ),
-            EntityType::GlowSquid => {
+            EntityTypeEnum::GlowSquid => {
                 spawn_flying_entity!(
                     commands,
                     pos,
                     GlowSquidBundle,
                     GlowSquid,
                     state,
-                    EntityType::GlowSquid
+                    EntityTypeEnum::GlowSquid,
+                    query
                 )
             }
-            EntityType::Pufferfish => {
+            EntityTypeEnum::Pufferfish => {
                 spawn_flying_entity!(
                     commands,
                     pos,
                     PufferfishBundle,
                     Pufferfish,
                     state,
-                    EntityType::Pufferfish
+                    EntityTypeEnum::Pufferfish,
+                    query
                 )
             }
-            EntityType::Salmon => spawn_flying_entity!(
+            EntityTypeEnum::Salmon => spawn_flying_entity!(
                 commands,
                 pos,
                 SalmonBundle,
                 Salmon,
                 state,
-                EntityType::Salmon
+                EntityTypeEnum::Salmon,
+                query
             ),
-            EntityType::Squid => {
-                spawn_flying_entity!(commands, pos, SquidBundle, Squid, state, EntityType::Squid)
+            EntityTypeEnum::Squid => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    SquidBundle,
+                    Squid,
+                    state,
+                    EntityTypeEnum::Squid,
+                    query
+                )
             }
-            EntityType::Tadpole => spawn_flying_entity!(
+            EntityTypeEnum::Tadpole => spawn_flying_entity!(
                 commands,
                 pos,
                 TadpoleBundle,
                 Tadpole,
                 state,
-                EntityType::Tadpole
+                EntityTypeEnum::Tadpole,
+                query
             ),
-            EntityType::TropicalFish => {
+            EntityTypeEnum::TropicalFish => {
                 spawn_flying_entity!(
                     commands,
                     pos,
                     TropicalFishBundle,
                     TropicalFish,
                     state,
-                    EntityType::TropicalFish
+                    EntityTypeEnum::TropicalFish,
+                    query
                 )
             }
 
             // Special: gravity but no water drag (amphibians, lava creatures)
-            EntityType::Axolotl => spawn_gravity_entity!(
+            EntityTypeEnum::Axolotl => spawn_gravity_entity!(
                 commands,
                 pos,
                 AxolotlBundle,
                 Axolotl,
                 state,
-                EntityType::Axolotl
+                EntityTypeEnum::Axolotl,
+                query
             ),
-            EntityType::Strider => spawn_gravity_entity!(
+            EntityTypeEnum::Strider => spawn_gravity_entity!(
                 commands,
                 pos,
                 StriderBundle,
                 Strider,
                 state,
-                EntityType::Strider
+                EntityTypeEnum::Strider,
+                query
             ),
-            EntityType::MagmaCube => {
+            EntityTypeEnum::MagmaCube => {
                 spawn_gravity_entity!(
                     commands,
                     pos,
                     MagmaCubeBundle,
                     MagmaCube,
                     state,
-                    EntityType::MagmaCube
+                    EntityTypeEnum::MagmaCube,
+                    query
                 )
             }
-            EntityType::Slime => {
-                spawn_gravity_entity!(commands, pos, SlimeBundle, Slime, state, EntityType::Slime)
+            EntityTypeEnum::Slime => {
+                spawn_gravity_entity!(
+                    commands,
+                    pos,
+                    SlimeBundle,
+                    Slime,
+                    state,
+                    EntityTypeEnum::Slime,
+                    query
+                )
             }
 
             // Hostile ground entities
-            EntityType::Bogged => spawn_ground_entity!(
+            EntityTypeEnum::Bogged => spawn_ground_entity!(
                 commands,
                 pos,
                 BoggedBundle,
                 Bogged,
                 state,
-                EntityType::Bogged
+                EntityTypeEnum::Bogged,
+                query
             ),
-            EntityType::Creaking => spawn_ground_entity!(
+            EntityTypeEnum::Creaking => spawn_ground_entity!(
                 commands,
                 pos,
                 CreakingBundle,
                 Creaking,
                 state,
-                EntityType::Creaking
+                EntityTypeEnum::Creaking,
+                query
             ),
-            EntityType::Creeper => spawn_ground_entity!(
+            EntityTypeEnum::Creeper => spawn_ground_entity!(
                 commands,
                 pos,
                 CreeperBundle,
                 Creeper,
                 state,
-                EntityType::Creeper
+                EntityTypeEnum::Creeper,
+                query
             ),
-            EntityType::Endermite => {
+            EntityTypeEnum::Endermite => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     EndermiteBundle,
                     Endermite,
                     state,
-                    EntityType::Endermite
+                    EntityTypeEnum::Endermite,
+                    query
                 )
             }
-            EntityType::Evoker => spawn_ground_entity!(
+            EntityTypeEnum::Evoker => spawn_ground_entity!(
                 commands,
                 pos,
                 EvokerBundle,
                 Evoker,
                 state,
-                EntityType::Evoker
+                EntityTypeEnum::Evoker,
+                query
             ),
-            EntityType::Hoglin => spawn_ground_entity!(
+            EntityTypeEnum::Hoglin => spawn_ground_entity!(
                 commands,
                 pos,
                 HoglinBundle,
                 Hoglin,
                 state,
-                EntityType::Hoglin
+                EntityTypeEnum::Hoglin,
+                query
             ),
-            EntityType::Husk => {
-                spawn_ground_entity!(commands, pos, HuskBundle, Husk, state, EntityType::Husk)
+            EntityTypeEnum::Husk => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    HuskBundle,
+                    Husk,
+                    state,
+                    EntityTypeEnum::Husk,
+                    query
+                )
             }
-            EntityType::PiglinBrute => {
+            EntityTypeEnum::PiglinBrute => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     PiglinBruteBundle,
                     PiglinBrute,
                     state,
-                    EntityType::PiglinBrute
+                    EntityTypeEnum::PiglinBrute,
+                    query
                 )
             }
-            EntityType::Pillager => spawn_ground_entity!(
+            EntityTypeEnum::Pillager => spawn_ground_entity!(
                 commands,
                 pos,
                 PillagerBundle,
                 Pillager,
                 state,
-                EntityType::Pillager
+                EntityTypeEnum::Pillager,
+                query
             ),
-            EntityType::Ravager => spawn_ground_entity!(
+            EntityTypeEnum::Ravager => spawn_ground_entity!(
                 commands,
                 pos,
                 RavagerBundle,
                 Ravager,
                 state,
-                EntityType::Ravager
+                EntityTypeEnum::Ravager,
+                query
             ),
-            EntityType::Silverfish => {
+            EntityTypeEnum::Silverfish => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     SilverfishBundle,
                     Silverfish,
                     state,
-                    EntityType::Silverfish
+                    EntityTypeEnum::Silverfish,
+                    query
                 )
             }
-            EntityType::Skeleton => spawn_ground_entity!(
+            EntityTypeEnum::Skeleton => spawn_ground_entity!(
                 commands,
                 pos,
                 SkeletonBundle,
                 Skeleton,
                 state,
-                EntityType::Skeleton
+                EntityTypeEnum::Skeleton,
+                query
             ),
-            EntityType::Stray => {
-                spawn_ground_entity!(commands, pos, StrayBundle, Stray, state, EntityType::Stray)
+            EntityTypeEnum::Stray => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    StrayBundle,
+                    Stray,
+                    state,
+                    EntityTypeEnum::Stray,
+                    query
+                )
             }
-            EntityType::Vindicator => {
+            EntityTypeEnum::Vindicator => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     VindicatorBundle,
                     Vindicator,
                     state,
-                    EntityType::Vindicator
+                    EntityTypeEnum::Vindicator,
+                    query
                 )
             }
-            EntityType::Warden => spawn_ground_entity!(
+            EntityTypeEnum::Warden => spawn_ground_entity!(
                 commands,
                 pos,
                 WardenBundle,
                 Warden,
                 state,
-                EntityType::Warden
+                EntityTypeEnum::Warden,
+                query
             ),
-            EntityType::Witch => {
-                spawn_ground_entity!(commands, pos, WitchBundle, Witch, state, EntityType::Witch)
+            EntityTypeEnum::Witch => {
+                spawn_ground_entity!(
+                    commands,
+                    pos,
+                    WitchBundle,
+                    Witch,
+                    state,
+                    EntityTypeEnum::Witch,
+                    query
+                )
             }
-            EntityType::WitherSkeleton => {
+            EntityTypeEnum::WitherSkeleton => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     WitherSkeletonBundle,
                     WitherSkeleton,
                     state,
-                    EntityType::WitherSkeleton
+                    EntityTypeEnum::WitherSkeleton,
+                    query
                 )
             }
-            EntityType::Zoglin => spawn_ground_entity!(
+            EntityTypeEnum::Zoglin => spawn_ground_entity!(
                 commands,
                 pos,
                 ZoglinBundle,
                 Zoglin,
                 state,
-                EntityType::Zoglin
+                EntityTypeEnum::Zoglin,
+                query
             ),
-            EntityType::Zombie => spawn_ground_entity!(
+            EntityTypeEnum::Zombie => spawn_ground_entity!(
                 commands,
                 pos,
                 ZombieBundle,
                 Zombie,
                 state,
-                EntityType::Zombie
+                EntityTypeEnum::Zombie,
+                query
             ),
-            EntityType::ZombieVillager => {
+            EntityTypeEnum::ZombieVillager => {
                 spawn_ground_entity!(
                     commands,
                     pos,
                     ZombieVillagerBundle,
                     ZombieVillager,
                     state,
-                    EntityType::ZombieVillager
+                    EntityTypeEnum::ZombieVillager,
+                    query
                 )
             }
-            EntityType::Shulker => spawn_ground_entity!(
+            EntityTypeEnum::Shulker => spawn_ground_entity!(
                 commands,
                 pos,
                 ShulkerBundle,
                 Shulker,
                 state,
-                EntityType::Shulker
+                EntityTypeEnum::Shulker,
+                query
             ),
 
             // Hostile flying entities
-            EntityType::Blaze => {
-                spawn_flying_entity!(commands, pos, BlazeBundle, Blaze, state, EntityType::Blaze)
+            EntityTypeEnum::Blaze => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    BlazeBundle,
+                    Blaze,
+                    state,
+                    EntityTypeEnum::Blaze,
+                    query
+                )
             }
-            EntityType::Breeze => spawn_flying_entity!(
+            EntityTypeEnum::Breeze => spawn_flying_entity!(
                 commands,
                 pos,
                 BreezeBundle,
                 Breeze,
                 state,
-                EntityType::Breeze
+                EntityTypeEnum::Breeze,
+                query
             ),
-            EntityType::Ghast => {
-                spawn_flying_entity!(commands, pos, GhastBundle, Ghast, state, EntityType::Ghast)
+            EntityTypeEnum::Ghast => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    GhastBundle,
+                    Ghast,
+                    state,
+                    EntityTypeEnum::Ghast,
+                    query
+                )
             }
-            EntityType::Phantom => spawn_flying_entity!(
+            EntityTypeEnum::Phantom => spawn_flying_entity!(
                 commands,
                 pos,
                 PhantomBundle,
                 Phantom,
                 state,
-                EntityType::Phantom
+                EntityTypeEnum::Phantom,
+                query
             ),
-            EntityType::Vex => {
-                spawn_flying_entity!(commands, pos, VexBundle, Vex, state, EntityType::Vex)
+            EntityTypeEnum::Vex => {
+                spawn_flying_entity!(
+                    commands,
+                    pos,
+                    VexBundle,
+                    Vex,
+                    state,
+                    EntityTypeEnum::Vex,
+                    query
+                )
             }
 
             // Hostile water entities
-            EntityType::ElderGuardian => {
+            EntityTypeEnum::ElderGuardian => {
                 spawn_flying_entity!(
                     commands,
                     pos,
                     ElderGuardianBundle,
                     ElderGuardian,
                     state,
-                    EntityType::ElderGuardian
+                    EntityTypeEnum::ElderGuardian,
+                    query
                 )
             }
-            EntityType::Guardian => spawn_flying_entity!(
+            EntityTypeEnum::Guardian => spawn_flying_entity!(
                 commands,
                 pos,
                 GuardianBundle,
                 Guardian,
                 state,
-                EntityType::Guardian
+                EntityTypeEnum::Guardian,
+                query
             ),
         }
     }

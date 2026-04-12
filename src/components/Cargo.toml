@@ -19,3 +19,4 @@ bevy_math = { workspace = true }
 uuid = { workspace = true }
 type_hash = { workspace = true }
 serde = { workspace = true }
+crossbeam-queue = { workspace = true }

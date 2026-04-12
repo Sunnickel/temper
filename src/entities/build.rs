@@ -1,6 +1,8 @@
+use proc_macro2::Ident;
 use quote::quote;
 use std::fs;
 use std::path::Path;
+use heck::ToShoutySnakeCase;
 use syn::{parse_file, Item};
 
 fn main() {
@@ -14,6 +16,7 @@ fn main() {
     let target_module_name = "entity_types";
 
     let mut enum_variants = Vec::new();
+    let mut id_match_arms = Vec::new();
 
     for item in ast.items {
         if let Item::Mod(module) = &item
@@ -24,16 +27,31 @@ fn main() {
                 if let Item::Struct(struct_item) = item {
                     let ident = &struct_item.ident;
                     enum_variants.push(quote! { #ident });
+                    let caps = Ident::new(
+                        &ident.to_string().to_shouty_snake_case(),
+                        proc_macro2::Span::call_site(),
+                    );
+                    id_match_arms.push(quote! {
+                    Self::#ident => temper_data::generated::entities::EntityType::#caps,
+                    });
                 }
             }
         }
     }
 
-    let enum_name = syn::Ident::new("EntityType", proc_macro2::Span::call_site());
+    let enum_name = syn::Ident::new("EntityTypeEnum", proc_macro2::Span::call_site());
     let enum_def = quote! {
         #[derive(Eq, PartialEq, serde::Serialize, serde::Deserialize, Debug, Clone, Copy, Hash,)]
         pub enum #enum_name {
             #( #enum_variants ),*
+        }
+
+        impl #enum_name {
+            pub fn to_entity_type(&self) -> temper_data::generated::entities::EntityType {
+                match self {
+                    #( #id_match_arms )*
+                }
+            }
         }
     };
 

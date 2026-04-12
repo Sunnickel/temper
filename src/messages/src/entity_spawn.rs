@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::{Entity, Message};
 use temper_components::player::position::Position;
-pub(crate) use temper_entities::entity_types::EntityType;
+pub(crate) use temper_entities::entity_types::EntityTypeEnum;
 
 /// Command to spawn an entity in front of a player.
 ///
@@ -8,7 +8,7 @@ pub(crate) use temper_entities::entity_types::EntityType;
 /// the spawn_command_processor system which calculates the spawn position.
 #[derive(Message)]
 pub struct SpawnEntityCommand {
-    pub entity_type: EntityType,
+    pub entity_type: EntityTypeEnum,
     pub player_entity: Entity,
 }
 
@@ -18,6 +18,6 @@ pub struct SpawnEntityCommand {
 /// the spawn position from the player's position and rotation.
 #[derive(Message)]
 pub struct SpawnEntityEvent {
-    pub entity_type: EntityType,
+    pub entity_type: EntityTypeEnum,
     pub position: Position,
 }
