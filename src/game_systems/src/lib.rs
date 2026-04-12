@@ -3,7 +3,7 @@ use bevy_ecs::schedule::{ExecutorKind, IntoScheduleConfigs, Schedule};
 use std::time::Duration;
 use temper_commands::infrastructure::register_command_systems;
 use temper_config::server_config::get_global_config;
-use temper_scheduler::{MissedTickBehavior, Scheduler, TimedSchedule, drain_registered_schedules};
+use temper_scheduler::{drain_registered_schedules, MissedTickBehavior, Scheduler, TimedSchedule};
 
 pub use background::lan_pinger::LanPinger;
 
@@ -92,7 +92,11 @@ fn register_world_sync_schedule_systems(schedule: &mut Schedule) {
 }
 
 fn register_chunk_gc_schedule_systems(schedule: &mut Schedule) {
-    schedule.add_systems(background::chunk_unloader::handle);
+    schedule.add_systems((
+        background::entity_unloader::handle,
+        (mobs::pig::save_pig,),
+        background::chunk_unloader::handle,
+    ));
 }
 
 fn register_keepalive_schedule_systems(schedule: &mut Schedule) {

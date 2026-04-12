@@ -1,4 +1,4 @@
-use bevy_ecs::prelude::{Added, Commands, MessageReader, Query, Res, With};
+use bevy_ecs::prelude::{Commands, MessageReader, Query, Res, With};
 use temper_components::combat::CombatProperties;
 use temper_components::entity_identity::Identity;
 use temper_components::last_synced_position::LastSyncedPosition;
@@ -10,12 +10,10 @@ use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
 use temper_components::player::velocity::Velocity;
 use temper_components::spawn::SpawnProperties;
-use temper_config::server_config::get_global_config;
 use temper_core::dimension::Dimension::Overworld;
 use temper_entities::entity_types::EntityTypeEnum;
 use temper_entities::markers::entity_types::Pig;
 use temper_entities::PigBundle;
-use temper_macros::get_registry_entry;
 use temper_messages::load_chunk_entities::LoadChunkEntities;
 use temper_messages::save_chunk_entities::SaveChunkEntities;
 use temper_net_runtime::connection::StreamWriter;

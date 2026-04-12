@@ -3,6 +3,7 @@ pub mod chunk_unloader;
 pub mod connection_killer;
 pub mod day_cycle;
 pub mod entity_sending;
+pub mod entity_unloader;
 pub mod keep_alive_system;
 pub mod lan_pinger;
 pub mod mq;

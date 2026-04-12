@@ -1,12 +1,18 @@
-use bevy_ecs::prelude::{MessageWriter, Query, Res};
+use bevy_ecs::prelude::{Commands, Entity, MessageWriter, Query, Res};
 use std::collections::HashSet;
+use temper_components::entity_identity::Identity;
 use temper_components::player::chunk_receiver::ChunkReceiver;
 use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;
 use temper_state::GlobalStateResource;
 use tracing::{error, trace};
 
-pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>, mut save_entity_writer: MessageWriter<temper_messages::save_chunk_entities::SaveChunkEntities>) {
+pub fn handle(
+    state: Res<GlobalStateResource>,
+    query: Query<&ChunkReceiver>,
+    mut cmd: Commands,
+    entity_query: Query<(Entity, &Identity)>,
+) {
     // If there are no connected players, unload all cached chunks
     if query.count() == 0 {
         let mut removed = 0;
@@ -52,7 +58,6 @@ pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>, mut
     let mut written_chunks = 0;
     // The difference is the set of chunks that are in the cache but not visible to any player
     for chunk_pos in all_chunks.difference(&visible_chunks) {
-        save_entity_writer.write(temper_messages::save_chunk_entities::SaveChunkEntities(*chunk_pos));
         let removed_chunk = state
             .0
             .world
@@ -60,6 +65,25 @@ pub fn handle(state: Res<GlobalStateResource>, query: Query<&ChunkReceiver>, mut
             .remove(&(*chunk_pos, Dimension::Overworld));
         match removed_chunk {
             Some(((pos, dim), chunk)) => {
+                for entity in chunk.entities.iter() {
+                    trace!(
+                        "Unloading entity with UUID {} from chunk {:?} as it is no longer visible to any player.",
+                        entity.key(),
+                        chunk_pos
+                    );
+                    let unloaded_entity = entity_query
+                        .iter()
+                        .find(|(_, identity)| identity.uuid == *entity.key());
+                    if let Some((entity, _)) = unloaded_entity {
+                        cmd.entity(entity).despawn();
+                    } else {
+                        error!(
+                            "Failed to find entity with UUID {} in chunk {:?} for despawning during chunk unload.",
+                            entity.key(),
+                            chunk_pos
+                        );
+                    }
+                }
                 let dirty = chunk.is_dirty();
                 if dirty {
                     state
