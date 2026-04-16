@@ -1,7 +1,8 @@
-use bevy_ecs::prelude::{Commands, Entity, MessageWriter, Query, Res};
+use bevy_ecs::prelude::{Commands, Entity, Has, Query, Res};
 use std::collections::HashSet;
-use temper_components::entity_identity::Identity;
+use temper_components::last_chunk_pos::LastChunkPos;
 use temper_components::player::chunk_receiver::ChunkReceiver;
+use temper_components::player::player_marker::PlayerMarker;
 use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;
 use temper_state::GlobalStateResource;
@@ -11,7 +12,7 @@ pub fn handle(
     state: Res<GlobalStateResource>,
     query: Query<&ChunkReceiver>,
     mut cmd: Commands,
-    entity_query: Query<(Entity, &Identity)>,
+    entity_query: Query<(Entity, &LastChunkPos, Has<PlayerMarker>)>,
 ) {
     // If there are no connected players, unload all cached chunks
     if query.count() == 0 {
@@ -65,24 +66,17 @@ pub fn handle(
             .remove(&(*chunk_pos, Dimension::Overworld));
         match removed_chunk {
             Some(((pos, dim), chunk)) => {
-                for entity in chunk.entities.iter() {
+                for (entity, last_chunk, is_player) in entity_query.iter() {
+                    if is_player || last_chunk.0 != *chunk_pos {
+                        continue;
+                    }
+
                     trace!(
-                        "Unloading entity with UUID {} from chunk {:?} as it is no longer visible to any player.",
-                        entity.key(),
+                        "Unloading live entity {:?} from chunk {:?} as it is no longer visible to any player.",
+                        entity,
                         chunk_pos
                     );
-                    let unloaded_entity = entity_query
-                        .iter()
-                        .find(|(_, identity)| identity.uuid == *entity.key());
-                    if let Some((entity, _)) = unloaded_entity {
-                        cmd.entity(entity).despawn();
-                    } else {
-                        error!(
-                            "Failed to find entity with UUID {} in chunk {:?} for despawning during chunk unload.",
-                            entity.key(),
-                            chunk_pos
-                        );
-                    }
+                    cmd.entity(entity).despawn();
                 }
                 let dirty = chunk.is_dirty();
                 if dirty {

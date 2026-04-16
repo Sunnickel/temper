@@ -1,3 +1,4 @@
+pub mod chunk_boundary;
 pub mod collisions;
 pub mod drag;
 pub mod gravity;

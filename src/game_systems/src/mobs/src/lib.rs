@@ -17,6 +17,7 @@ pub mod pig;
 ///     marker = Pig,
 ///     bundle = PigBundle,
 ///     entity_type = Pig,
+///     runtime_components = (HasGravity, HasCollisions, HasWaterDrag),
 ///     fields = {
 ///         identity: Identity => clone,
 ///         metadata: EntityMetadata => copy,
@@ -43,6 +44,7 @@ macro_rules! define_entity_save_load {
         marker = $marker:path,
         bundle = $bundle:path,
         entity_type = $entity_type:ident,
+        runtime_components = ( $( $runtime_component:path ),* $(,)? ),
         fields = {
             $(
                 $field:ident : $field_ty:path => $mode:ident
@@ -145,7 +147,15 @@ macro_rules! define_entity_save_load {
                         {
                             let bundle: $bundle = bitcode::deserialize(data)
                                 .expect("Failed to deserialize entity bundle");
-                            cmd.spawn((bundle, $marker));
+                            let last_chunk = temper_components::last_chunk_pos::LastChunkPos::new(
+                                bundle.position.chunk(),
+                            );
+                            cmd.spawn((
+                                bundle,
+                                $marker,
+                                $( $runtime_component, )*
+                                last_chunk,
+                            ));
                         }
                     }
                 }

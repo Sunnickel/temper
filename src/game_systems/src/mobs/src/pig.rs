@@ -19,6 +19,11 @@ crate::define_entity_save_load!(
     marker = Pig,
     bundle = PigBundle,
     entity_type = Pig,
+    runtime_components = (
+        temper_entities::markers::HasGravity,
+        temper_entities::markers::HasCollisions,
+        temper_entities::markers::HasWaterDrag
+    ),
     fields = {
         identity: Identity => clone,
         metadata: EntityMetadata => copy,

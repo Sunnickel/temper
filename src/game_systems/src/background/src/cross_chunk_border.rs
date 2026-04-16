@@ -1,5 +1,4 @@
-use bevy_ecs::message::MessageReader;
-use bevy_ecs::prelude::{Entity, Has, MessageWriter, Query, Res};
+use bevy_ecs::prelude::{Entity, Has, MessageReader, MessageWriter, Query, Res};
 use temper_components::entity_identity::Identity;
 use temper_components::player::player_marker::PlayerMarker;
 use temper_core::dimension::Dimension::Overworld;
@@ -10,9 +9,9 @@ use temper_world::WorldError;
 use tracing::error;
 
 pub fn cross_chunk_boarder(
-    chunk_cross_events: &mut MessageReader<ChunkBoundaryCrossed>,
+    mut chunk_cross_events: MessageReader<ChunkBoundaryCrossed>,
     query: Query<(Entity, &Identity, Has<PlayerMarker>)>,
-    chunk_calc_messages: &mut MessageWriter<ChunkCalc>,
+    mut chunk_calc_messages: MessageWriter<ChunkCalc>,
     state: Res<GlobalStateResource>,
 ) {
     'ev_loop: for event in chunk_cross_events.read() {

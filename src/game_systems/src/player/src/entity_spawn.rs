@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
 use temper_components::entity_identity::Identity;
+use temper_components::last_chunk_pos::LastChunkPos;
 use temper_components::player::entity_tracker::EntityTracker;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
@@ -19,6 +20,7 @@ macro_rules! spawn_ground_entity {
     ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path, $Query:ident) => {{
         let bundle = $Bundle::new($position);
         let uuid = bundle.identity.uuid;
+        let last_chunk = LastChunkPos::new(bundle.position.chunk());
         let chunk = $State
             .world
             .get_or_generate_chunk(
@@ -34,7 +36,14 @@ macro_rules! spawn_ground_entity {
             ),
         );
         chunk.mark_dirty();
-        $commands.spawn((bundle, $Marker, HasGravity, HasCollisions, HasWaterDrag));
+        $commands.spawn((
+            bundle,
+            $Marker,
+            HasGravity,
+            HasCollisions,
+            HasWaterDrag,
+            last_chunk,
+        ));
         $Query.iter().for_each(|tracker| {
             tracker.to_track.push((uuid, $EType.to_entity_type().id));
         });
@@ -46,6 +55,7 @@ macro_rules! spawn_flying_entity {
     ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path, $Query:ident) => {{
         let bundle = $Bundle::new($position);
         let uuid = bundle.identity.uuid;
+        let last_chunk = LastChunkPos::new(bundle.position.chunk());
         let chunk = $State
             .world
             .get_or_generate_chunk(
@@ -61,7 +71,7 @@ macro_rules! spawn_flying_entity {
             ),
         );
         chunk.mark_dirty();
-        $commands.spawn((bundle, $Marker, HasCollisions));
+        $commands.spawn((bundle, $Marker, HasCollisions, last_chunk));
         $Query.iter().for_each(|tracker| {
             tracker.to_track.push((uuid, $EType.to_entity_type().id));
         });
@@ -73,6 +83,7 @@ macro_rules! spawn_gravity_entity {
     ($commands:expr, $position:expr, $Bundle:ident, $Marker:ident, $State:ident, $EType:path, $Query:ident) => {{
         let bundle = $Bundle::new($position);
         let uuid = bundle.identity.uuid;
+        let last_chunk = LastChunkPos::new(bundle.position.chunk());
         let chunk = $State
             .world
             .get_or_generate_chunk(
@@ -88,7 +99,7 @@ macro_rules! spawn_gravity_entity {
             ),
         );
         chunk.mark_dirty();
-        $commands.spawn((bundle, $Marker, HasGravity, HasCollisions));
+        $commands.spawn((bundle, $Marker, HasGravity, HasCollisions, last_chunk));
         $Query.iter().for_each(|tracker| {
             tracker.to_track.push((uuid, $EType.to_entity_type().id));
         });

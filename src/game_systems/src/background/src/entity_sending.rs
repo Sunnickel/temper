@@ -47,6 +47,8 @@ pub fn send_new_entities(
     )>,
 ) {
     for (conn, mut entity_tracker, player_pos, client_info) in player_query.iter_mut() {
+        let mut unresolved = Vec::new();
+
         while let Some((uuid, entity_type_id)) = entity_tracker.to_track.pop() {
             if let Some((entity, identity, entity_pos, rot, is_player)) =
                 entity_query
@@ -93,9 +95,14 @@ pub fn send_new_entities(
                 );
                 entity_tracker.tracking.insert(entity);
             } else {
-                // Reinsert into the queue if the entity is not found, it might be added in a future tick
-                entity_tracker.to_track.push((uuid, entity_type_id));
+                // Retry unresolved entities on a later tick instead of reinserting
+                // into the actively-drained queue and looping forever.
+                unresolved.push((uuid, entity_type_id));
             }
+        }
+
+        for item in unresolved {
+            entity_tracker.to_track.push(item);
         }
     }
 }

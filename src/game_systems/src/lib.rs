@@ -76,6 +76,7 @@ fn register_tick_systems(schedule: &mut Schedule) {
     schedule.add_systems(background::day_cycle::tick_daylight_cycle);
     schedule.add_systems(background::mq::process);
     schedule.add_systems(background::server_command::handle);
+    schedule.add_systems(background::destroy_entity::destroy_entity_system);
 
     schedule.add_systems(
         (
@@ -84,6 +85,8 @@ fn register_tick_systems(schedule: &mut Schedule) {
             physics::drag::handle,
             physics::velocity::handle,
             physics::collisions::handle,
+            physics::chunk_boundary::handle,
+            background::cross_chunk_border::cross_chunk_boarder,
         )
             .chain(),
     );

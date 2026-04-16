@@ -110,13 +110,13 @@ impl World {
             }
             trace!("Syncing chunk: {:?}", k.0);
             if !v.entities.is_empty() {
-                debug!(
+                trace!(
                     "Chunk at {:?} has {} entities, saving.",
                     k.0,
                     v.entities.len()
                 );
             } else {
-                debug!("Chunk at {:?} has no entities, saving.", k.0);
+                trace!("Chunk at {:?} has no entities, saving.", k.0);
             }
             save_chunk_internal(&self.storage_backend, k.0, k.1, v)?;
             v.clear_dirty();
