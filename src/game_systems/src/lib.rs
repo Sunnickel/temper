@@ -49,26 +49,33 @@ fn register_tick_systems(schedule: &mut Schedule) {
             ApplyDeferred,
             player::chunk_calculator::handle,
             player::emit_player_joined::emit_player_joined,
+            player::player_spawn::handle,
         )
             .chain(),
     );
     schedule.add_systems(player::player_despawn::handle);
     schedule.add_systems(player::player_join_message::handle);
     schedule.add_systems(player::player_leave_message::handle);
-    schedule.add_systems(player::player_spawn::handle);
     schedule.add_systems(player::player_swimming::detect_player_swimming);
     schedule.add_systems(player::player_tp::teleport_player);
     schedule.add_systems(player::send_inventory_updates::handle_inventory_updates);
 
     register_command_systems(schedule);
 
-    schedule.add_systems(background::chunk_sending::handle);
+    schedule.add_systems(
+        (
+            background::chunk_sending::handle,
+            background::entity_tracking::refresh_visible_entities,
+            background::entity_sending::send_untracked_entities,
+            background::entity_sending::send_new_entities,
+            background::send_entity_updates::handle,
+        )
+            .chain(),
+    );
     schedule.add_systems(background::connection_killer::connection_killer);
     schedule.add_systems(background::day_cycle::tick_daylight_cycle);
     schedule.add_systems(background::mq::process);
-    schedule.add_systems(background::send_entity_updates::handle);
     schedule.add_systems(background::server_command::handle);
-    schedule.add_systems(background::entity_sending::send_new_entities);
 
     schedule.add_systems(
         (

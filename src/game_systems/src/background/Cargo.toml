@@ -23,3 +23,4 @@ tokio = { workspace = true }
 temper-entities = { workspace = true }
 temper-commands = { workspace = true }
 crossbeam-queue = { workspace = true }
+temper-world = { workspace = true }
