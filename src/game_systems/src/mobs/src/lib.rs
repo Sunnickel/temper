@@ -1,4 +1,52 @@
-pub mod pig;
+use bevy_ecs::schedule::Schedule;
+
+pub mod collision_only;
+pub mod gravity_no_drag;
+pub mod ground;
+
+pub fn register_tick_systems(_schedule: &mut Schedule) {}
+
+pub fn register_load_systems(schedule: &mut Schedule) {
+    ground::register_load_systems(schedule);
+    collision_only::register_load_systems(schedule);
+    gravity_no_drag::register_load_systems(schedule);
+}
+
+pub fn register_save_systems(schedule: &mut Schedule) {
+    ground::register_save_systems(schedule);
+    collision_only::register_save_systems(schedule);
+    gravity_no_drag::register_save_systems(schedule);
+}
+
+#[macro_export]
+macro_rules! define_standard_mob_save_load {
+    (
+        $name:ident,
+        marker = $marker:path,
+        bundle = $bundle:path,
+        entity_type = $entity_type:ident,
+        runtime_components = ( $( $runtime_component:path ),* $(,)? )
+    ) => {
+        $crate::define_entity_save_load!(
+            $name,
+            marker = $marker,
+            bundle = $bundle,
+            entity_type = $entity_type,
+            runtime_components = ( $( $runtime_component ),* ),
+            fields = {
+                identity: temper_components::entity_identity::Identity => clone,
+                metadata: temper_components::metadata::EntityMetadata => copy,
+                combat: temper_components::combat::CombatProperties => copy,
+                spawn: temper_components::spawn::SpawnProperties => clone,
+                position: temper_components::player::position::Position => copy,
+                rotation: temper_components::player::rotation::Rotation => copy,
+                velocity: temper_components::player::velocity::Velocity => copy,
+                on_ground: temper_components::player::grounded::OnGround => copy,
+                last_synced_position: temper_components::last_synced_position::LastSyncedPosition => copy,
+            }
+        );
+    };
+}
 
 /// Generates chunk save/load systems for an entity bundle.
 ///
@@ -124,27 +172,28 @@ macro_rules! define_entity_save_load {
                 >,
             ) {
                 for message in reader.read() {
-                    let chunk = state
+                    let Ok(chunk) = state
                         .0
                         .world
-                        .get_or_generate_mut(
+                        .get_chunk(
                             message.0,
                             temper_core::dimension::Dimension::Overworld,
                         )
-                        .expect("Failed to get or generate chunk");
+                        else {
+                            tracing::error!("Failed to load chunk {} for entity loading", message.0);
+                            continue;
+                        };
 
                     for kv in chunk.entities.iter() {
                         let (entity_type, data) = kv.value();
-
-                        tracing::debug!(
+                        if *entity_type
+                            == temper_entities::entity_types::EntityTypeEnum::$entity_type
+                        {
+                            tracing::debug!(
                             "Loading entity of type {:?} from chunk {}",
                             entity_type,
                             message.0
                         );
-
-                        if *entity_type
-                            == temper_entities::entity_types::EntityTypeEnum::$entity_type
-                        {
                             let bundle: $bundle = bitcode::deserialize(data)
                                 .expect("Failed to deserialize entity bundle");
                             let last_chunk = temper_components::last_chunk_pos::LastChunkPos::new(

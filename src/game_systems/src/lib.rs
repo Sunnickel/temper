@@ -91,8 +91,8 @@ fn register_tick_systems(schedule: &mut Schedule) {
             .chain(),
     );
 
-    schedule.add_systems(mobs::pig::tick_pig);
-    schedule.add_systems(mobs::pig::load_pig);
+    mobs::register_tick_systems(schedule);
+    mobs::register_load_systems(schedule);
 
     schedule.add_systems(world::particles::handle);
 }
@@ -102,11 +102,9 @@ fn register_world_sync_schedule_systems(schedule: &mut Schedule) {
 }
 
 fn register_chunk_gc_schedule_systems(schedule: &mut Schedule) {
-    schedule.add_systems((
-        background::entity_unloader::handle,
-        (mobs::pig::save_pig,),
-        background::chunk_unloader::handle,
-    ));
+    schedule.add_systems(background::entity_unloader::handle);
+    mobs::register_save_systems(schedule);
+    schedule.add_systems(background::chunk_unloader::handle);
 }
 
 fn register_keepalive_schedule_systems(schedule: &mut Schedule) {
@@ -154,14 +152,9 @@ pub fn register_schedules(timed: &mut Scheduler, shutdown_schedule: &mut Schedul
         .with_phase(Duration::from_millis(250)),
     );
 
-    shutdown_schedule.add_systems(
-        (
-            shutdown::send_save_message::send_save_message,
-            (mobs::pig::save_pig,),
-            background::world_sync::sync_world,
-        )
-            .chain(),
-    );
+    shutdown_schedule.add_systems(shutdown::send_save_message::send_save_message);
+    mobs::register_save_systems(shutdown_schedule);
+    shutdown_schedule.add_systems(background::world_sync::sync_world);
     shutdown_schedule.add_systems(shutdown::send_shutdown_packet::handle);
 
     for pending in drain_registered_schedules() {

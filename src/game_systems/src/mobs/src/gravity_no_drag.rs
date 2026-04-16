@@ -1,0 +1,59 @@
+use bevy_ecs::schedule::Schedule;
+
+crate::define_standard_mob_save_load!(
+    axolotl,
+    marker = temper_entities::markers::entity_types::Axolotl,
+    bundle = temper_entities::AxolotlBundle,
+    entity_type = Axolotl,
+    runtime_components = (
+        temper_entities::markers::HasGravity,
+        temper_entities::markers::HasCollisions
+    )
+);
+
+crate::define_standard_mob_save_load!(
+    magma_cube,
+    marker = temper_entities::markers::entity_types::MagmaCube,
+    bundle = temper_entities::MagmaCubeBundle,
+    entity_type = MagmaCube,
+    runtime_components = (
+        temper_entities::markers::HasGravity,
+        temper_entities::markers::HasCollisions
+    )
+);
+
+crate::define_standard_mob_save_load!(
+    slime,
+    marker = temper_entities::markers::entity_types::Slime,
+    bundle = temper_entities::SlimeBundle,
+    entity_type = Slime,
+    runtime_components = (
+        temper_entities::markers::HasGravity,
+        temper_entities::markers::HasCollisions
+    )
+);
+
+crate::define_standard_mob_save_load!(
+    strider,
+    marker = temper_entities::markers::entity_types::Strider,
+    bundle = temper_entities::StriderBundle,
+    entity_type = Strider,
+    runtime_components = (
+        temper_entities::markers::HasGravity,
+        temper_entities::markers::HasCollisions
+    )
+);
+
+pub fn register_load_systems(schedule: &mut Schedule) {
+    schedule.add_systems(load_axolotl);
+    schedule.add_systems(load_magma_cube);
+    schedule.add_systems(load_slime);
+    schedule.add_systems(load_strider);
+}
+
+pub fn register_save_systems(schedule: &mut Schedule) {
+    schedule.add_systems(save_axolotl);
+    schedule.add_systems(save_magma_cube);
+    schedule.add_systems(save_slime);
+    schedule.add_systems(save_strider);
+}

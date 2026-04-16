@@ -1,19 +1,15 @@
 use bevy_ecs::prelude::*;
-use temper_components::entity_identity::Identity;
 use temper_components::last_chunk_pos::LastChunkPos;
 use temper_components::player::entity_tracker::EntityTracker;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
 use temper_entities::bundles::*;
-use temper_entities::components::EntityMetadata;
 use temper_entities::entity_types::EntityTypeEnum;
 use temper_entities::markers::entity_types::*;
 use temper_entities::markers::{HasCollisions, HasGravity, HasWaterDrag};
 use temper_messages::{SpawnEntityCommand, SpawnEntityEvent};
-use temper_net_runtime::connection::StreamWriter;
-use temper_protocol::outgoing::spawn_entity::SpawnEntityPacket;
 use temper_state::GlobalStateResource;
-use tracing::{error, warn};
+use tracing::warn;
 
 /// Macro for spawning ground entities (gravity + collisions + water drag)
 macro_rules! spawn_ground_entity {
