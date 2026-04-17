@@ -1,4 +1,4 @@
-use bevy_ecs::schedule::Schedule;
+use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule};
 
 crate::define_standard_mob_save_load!(
     allay,
@@ -161,47 +161,51 @@ crate::define_standard_mob_save_load!(
 );
 
 pub fn register_load_systems(schedule: &mut Schedule) {
-    schedule.add_systems(load_allay);
-    schedule.add_systems(load_bat);
-    schedule.add_systems(load_bee);
-    schedule.add_systems(load_blaze);
-    schedule.add_systems(load_breeze);
-    schedule.add_systems(load_cod);
-    schedule.add_systems(load_dolphin);
-    schedule.add_systems(load_drowned);
-    schedule.add_systems(load_elder_guardian);
-    schedule.add_systems(load_ghast);
-    schedule.add_systems(load_glow_squid);
-    schedule.add_systems(load_guardian);
-    schedule.add_systems(load_parrot);
-    schedule.add_systems(load_phantom);
-    schedule.add_systems(load_pufferfish);
-    schedule.add_systems(load_salmon);
-    schedule.add_systems(load_squid);
-    schedule.add_systems(load_tadpole);
-    schedule.add_systems(load_tropical_fish);
-    schedule.add_systems(load_vex);
+    crate::add_systems_to_set!(schedule, crate::MobLoadSystems, [
+        load_allay,
+        load_bat,
+        load_bee,
+        load_blaze,
+        load_breeze,
+        load_cod,
+        load_dolphin,
+        load_drowned,
+        load_elder_guardian,
+        load_ghast,
+        load_glow_squid,
+        load_guardian,
+        load_parrot,
+        load_phantom,
+        load_pufferfish,
+        load_salmon,
+        load_squid,
+        load_tadpole,
+        load_tropical_fish,
+        load_vex,
+    ]);
 }
 
 pub fn register_save_systems(schedule: &mut Schedule) {
-    schedule.add_systems(save_allay);
-    schedule.add_systems(save_bat);
-    schedule.add_systems(save_bee);
-    schedule.add_systems(save_blaze);
-    schedule.add_systems(save_breeze);
-    schedule.add_systems(save_cod);
-    schedule.add_systems(save_dolphin);
-    schedule.add_systems(save_drowned);
-    schedule.add_systems(save_elder_guardian);
-    schedule.add_systems(save_ghast);
-    schedule.add_systems(save_glow_squid);
-    schedule.add_systems(save_guardian);
-    schedule.add_systems(save_parrot);
-    schedule.add_systems(save_phantom);
-    schedule.add_systems(save_pufferfish);
-    schedule.add_systems(save_salmon);
-    schedule.add_systems(save_squid);
-    schedule.add_systems(save_tadpole);
-    schedule.add_systems(save_tropical_fish);
-    schedule.add_systems(save_vex);
+    crate::add_systems_to_set!(schedule, crate::MobSaveSystems, [
+        save_allay,
+        save_bat,
+        save_bee,
+        save_blaze,
+        save_breeze,
+        save_cod,
+        save_dolphin,
+        save_drowned,
+        save_elder_guardian,
+        save_ghast,
+        save_glow_squid,
+        save_guardian,
+        save_parrot,
+        save_phantom,
+        save_pufferfish,
+        save_salmon,
+        save_squid,
+        save_tadpole,
+        save_tropical_fish,
+        save_vex,
+    ]);
 }

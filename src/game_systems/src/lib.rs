@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::ApplyDeferred;
-use bevy_ecs::schedule::{ExecutorKind, IntoScheduleConfigs, Schedule};
+use bevy_ecs::schedule::{ExecutorKind, IntoScheduleConfigs, Schedule, SystemSet};
 use std::time::Duration;
 use temper_commands::infrastructure::register_command_systems;
 use temper_config::server_config::get_global_config;
@@ -7,8 +7,31 @@ use temper_scheduler::{drain_registered_schedules, MissedTickBehavior, Scheduler
 
 pub use background::lan_pinger::LanPinger;
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+enum TickPhase {
+    ChunkSending,
+    VisibleTracking,
+}
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+enum ChunkGcPhase {
+    MarkForSave,
+    UnloadChunks,
+}
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+enum ShutdownPhase {
+    EmitSaveMessages,
+    FlushWorld,
+    ShutdownPackets,
+}
+
 // TODO: Clean this up with bevy's app thing
 fn register_tick_systems(schedule: &mut Schedule) {
+    schedule.configure_sets(
+        (TickPhase::ChunkSending, mobs::MobLoadSystems, TickPhase::VisibleTracking).chain(),
+    );
+
     schedule.add_systems(packets::chunk_batch_ack::handle);
     schedule.add_systems(packets::confirm_player_teleport::handle);
     schedule.add_systems(packets::keep_alive::handle);
@@ -62,15 +85,17 @@ fn register_tick_systems(schedule: &mut Schedule) {
 
     register_command_systems(schedule);
 
+    schedule.add_systems(background::chunk_sending::handle.in_set(TickPhase::ChunkSending));
+    mobs::register_load_systems(schedule);
     schedule.add_systems(
         (
-            background::chunk_sending::handle,
             background::entity_tracking::refresh_visible_entities,
             background::entity_sending::send_untracked_entities,
             background::entity_sending::send_new_entities,
             background::send_entity_updates::handle,
         )
-            .chain(),
+            .chain()
+            .in_set(TickPhase::VisibleTracking),
     );
     schedule.add_systems(background::connection_killer::connection_killer);
     schedule.add_systems(background::day_cycle::tick_daylight_cycle);
@@ -90,9 +115,7 @@ fn register_tick_systems(schedule: &mut Schedule) {
         )
             .chain(),
     );
-
     mobs::register_tick_systems(schedule);
-    mobs::register_load_systems(schedule);
 
     schedule.add_systems(world::particles::handle);
 }
@@ -102,9 +125,18 @@ fn register_world_sync_schedule_systems(schedule: &mut Schedule) {
 }
 
 fn register_chunk_gc_schedule_systems(schedule: &mut Schedule) {
-    schedule.add_systems(background::entity_unloader::handle);
+    schedule.set_executor_kind(ExecutorKind::SingleThreaded);
+    schedule.configure_sets(
+        (
+            ChunkGcPhase::MarkForSave,
+            mobs::MobSaveSystems,
+            ChunkGcPhase::UnloadChunks,
+        )
+            .chain(),
+    );
+    schedule.add_systems(background::entity_unloader::handle.in_set(ChunkGcPhase::MarkForSave));
     mobs::register_save_systems(schedule);
-    schedule.add_systems(background::chunk_unloader::handle);
+    schedule.add_systems(background::chunk_unloader::handle.in_set(ChunkGcPhase::UnloadChunks));
 }
 
 fn register_keepalive_schedule_systems(schedule: &mut Schedule) {
@@ -151,11 +183,23 @@ pub fn register_schedules(timed: &mut Scheduler, shutdown_schedule: &mut Schedul
         .with_behavior(MissedTickBehavior::Skip)
         .with_phase(Duration::from_millis(250)),
     );
-
-    shutdown_schedule.add_systems(shutdown::send_save_message::send_save_message);
+    shutdown_schedule.set_executor_kind(ExecutorKind::SingleThreaded);
+    shutdown_schedule.configure_sets(
+        (
+            ShutdownPhase::EmitSaveMessages,
+            mobs::MobSaveSystems,
+            ShutdownPhase::FlushWorld,
+            ShutdownPhase::ShutdownPackets,
+        )
+            .chain(),
+    );
+    shutdown_schedule.add_systems(
+        shutdown::send_save_message::send_save_message.in_set(ShutdownPhase::EmitSaveMessages),
+    );
     mobs::register_save_systems(shutdown_schedule);
-    shutdown_schedule.add_systems(background::world_sync::sync_world);
-    shutdown_schedule.add_systems(shutdown::send_shutdown_packet::handle);
+    shutdown_schedule.add_systems(background::world_sync::sync_world.in_set(ShutdownPhase::FlushWorld));
+    shutdown_schedule
+        .add_systems(shutdown::send_shutdown_packet::handle.in_set(ShutdownPhase::ShutdownPackets));
 
     for pending in drain_registered_schedules() {
         timed.register(pending.into_timed());

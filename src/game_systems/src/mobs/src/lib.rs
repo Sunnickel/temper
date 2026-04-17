@@ -1,8 +1,14 @@
-use bevy_ecs::schedule::Schedule;
+use bevy_ecs::schedule::{Schedule, SystemSet};
 
 pub mod collision_only;
 pub mod gravity_no_drag;
 pub mod ground;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct MobLoadSystems;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct MobSaveSystems;
 
 pub fn register_tick_systems(_schedule: &mut Schedule) {}
 
@@ -16,6 +22,15 @@ pub fn register_save_systems(schedule: &mut Schedule) {
     ground::register_save_systems(schedule);
     collision_only::register_save_systems(schedule);
     gravity_no_drag::register_save_systems(schedule);
+}
+
+#[macro_export]
+macro_rules! add_systems_to_set {
+    ($schedule:expr, $set:path, [ $( $system:path ),+ $(,)? ]) => {
+        $(
+            $schedule.add_systems($system.in_set($set));
+        )+
+    };
 }
 
 #[macro_export]

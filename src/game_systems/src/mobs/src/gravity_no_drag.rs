@@ -1,4 +1,4 @@
-use bevy_ecs::schedule::Schedule;
+use bevy_ecs::schedule::{IntoScheduleConfigs, Schedule};
 
 crate::define_standard_mob_save_load!(
     axolotl,
@@ -45,15 +45,19 @@ crate::define_standard_mob_save_load!(
 );
 
 pub fn register_load_systems(schedule: &mut Schedule) {
-    schedule.add_systems(load_axolotl);
-    schedule.add_systems(load_magma_cube);
-    schedule.add_systems(load_slime);
-    schedule.add_systems(load_strider);
+    crate::add_systems_to_set!(schedule, crate::MobLoadSystems, [
+        load_axolotl,
+        load_magma_cube,
+        load_slime,
+        load_strider,
+    ]);
 }
 
 pub fn register_save_systems(schedule: &mut Schedule) {
-    schedule.add_systems(save_axolotl);
-    schedule.add_systems(save_magma_cube);
-    schedule.add_systems(save_slime);
-    schedule.add_systems(save_strider);
+    crate::add_systems_to_set!(schedule, crate::MobSaveSystems, [
+        save_axolotl,
+        save_magma_cube,
+        save_slime,
+        save_strider,
+    ]);
 }
