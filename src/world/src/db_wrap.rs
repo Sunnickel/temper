@@ -3,7 +3,7 @@ use temper_core::dimension::Dimension;
 use temper_core::pos::ChunkPos;
 use temper_world_format::errors::WorldError;
 use temper_world_format::Chunk;
-use tracing::{debug, trace};
+use tracing::trace;
 use world_db::chunks::{
     chunk_exists_internal, delete_chunk_internal, load_chunk_internal, save_chunk_internal,
     sync_internal,

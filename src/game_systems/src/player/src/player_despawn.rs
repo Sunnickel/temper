@@ -42,11 +42,11 @@ pub fn handle(
                 continue;
             }
 
-            if tracker.tracking.remove(&event.entity) {
-                if let Err(e) = conn.send_packet_ref(&remove_entity_packet) {
-                    error!("Failed to send remove entities packet: {:?}", e);
-                    continue;
-                }
+            if tracker.tracking.remove(&event.entity)
+                && let Err(e) = conn.send_packet_ref(&remove_entity_packet)
+            {
+                error!("Failed to send remove entities packet: {:?}", e);
+                continue;
             }
 
             // Remove from tab list

@@ -1,15 +1,14 @@
-use bevy_ecs::prelude::{Entity, Has, Query};
+use bevy_ecs::prelude::{Entity, Query};
 use temper_components::entity_identity::Identity;
 use temper_components::player::chunk_receiver::ChunkReceiver;
 use temper_components::player::entity_tracker::EntityTracker;
-use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::position::Position;
 use temper_net_runtime::connection::StreamWriter;
 use tracing::trace;
 
 pub fn refresh_visible_entities(
     mut player_query: Query<(Entity, &StreamWriter, &ChunkReceiver, &mut EntityTracker)>,
-    entity_query: Query<(Entity, &Identity, &Position, Has<PlayerMarker>, Option<&StreamWriter>)>,
+    entity_query: Query<(Entity, &Identity, &Position, Option<&StreamWriter>)>,
 ) {
     for (player_entity, conn, chunk_receiver, mut tracker) in player_query.iter_mut() {
         if !conn.is_running() {
@@ -20,12 +19,12 @@ pub fn refresh_visible_entities(
         for tracked_entity in tracked_entities {
             let should_keep = entity_query
                 .get(tracked_entity)
-                .map(|(entity, _identity, pos, is_player, maybe_writer)| {
+                .map(|(entity, _identity, pos, maybe_writer)| {
                     if entity == player_entity {
                         return false;
                     }
 
-                    if is_player && maybe_writer.is_none_or(|writer| !writer.is_running()) {
+                    if maybe_writer.is_none_or(|writer| !writer.is_running()) {
                         return false;
                     }
 
@@ -40,12 +39,12 @@ pub fn refresh_visible_entities(
             }
         }
 
-        for (entity, identity, pos, is_player, maybe_writer) in entity_query.iter() {
+        for (entity, identity, pos, maybe_writer) in entity_query.iter() {
             if entity == player_entity {
                 continue;
             }
 
-            if is_player && maybe_writer.is_none_or(|writer| !writer.is_running()) {
+            if maybe_writer.is_none_or(|writer| !writer.is_running()) {
                 continue;
             }
 

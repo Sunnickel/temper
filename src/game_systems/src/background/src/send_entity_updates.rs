@@ -1,7 +1,7 @@
-#![expect(clippy::type_complexity)]
 use bevy_ecs::prelude::{Entity, MessageReader, Query};
 use temper_codec::net_types::angle::NetAngle;
 use temper_components::entity_identity::Identity;
+use temper_components::player::entity_tracker::EntityTracker;
 use temper_components::player::grounded::OnGround;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
@@ -12,7 +12,6 @@ use temper_net_runtime::connection::StreamWriter;
 use temper_protocol::outgoing::entity_position_sync::TeleportEntityPacket;
 use temper_protocol::outgoing::update_entity_position_and_rotation::UpdateEntityPositionAndRotationPacket;
 use tracing::warn;
-use temper_components::player::entity_tracker::EntityTracker;
 
 pub fn handle(
     mut query: Query<(
