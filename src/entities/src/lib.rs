@@ -1,5 +1,6 @@
 pub mod bundles;
 pub mod components;
+#[rustfmt::skip]
 pub mod entity_types;
 pub mod markers;
 
