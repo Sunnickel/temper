@@ -1,3 +1,23 @@
+//! How this binfire works:
+//! - `define_entity_save_load` generates a pair of save/load systems for a specific entity bundle.
+//!   The generated save system listens for `SaveChunkEntities` and writes matching entities into
+//!   the chunk entity map in world state.
+//! - The generated load system listens for `LoadChunkEntities`, deserializes matching saved
+//!   entities from the chunk, and respawns them with the required runtime-only marker/components.
+//! - `define_standard_mob_save_load` is a wrapper that supplies the standard persisted
+//!   fields used by most mobs. You don't have to use this if you have a weird mob with different
+//!   persisted fields, but it should cover most cases and saves a lot of boilerplate.
+//!
+//! The macro invocations themselves live in the category modules:
+//! - `ground` for mobs with gravity, collisions, and water drag
+//! - `collision_only` for mobs that only need collisions
+//! - `gravity_no_drag` for mobs with gravity/collisions but no water drag
+//!
+//! Those module-level macro invocations generate the concrete `save_*` and `load_*` systems.
+//! The `register_load_systems` and `register_save_systems` functions in this file do not generate
+//! systems; they just ask each category module to add its already-generated systems to the
+//! appropriate Bevy system set.
+
 use bevy_ecs::schedule::{Schedule, SystemSet};
 
 pub mod collision_only;

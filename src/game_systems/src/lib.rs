@@ -29,7 +29,12 @@ enum ShutdownPhase {
 // TODO: Clean this up with bevy's app thing
 fn register_tick_systems(schedule: &mut Schedule) {
     schedule.configure_sets(
-        (TickPhase::ChunkSending, mobs::MobLoadSystems, TickPhase::VisibleTracking).chain(),
+        (
+            TickPhase::ChunkSending,
+            mobs::MobLoadSystems,
+            TickPhase::VisibleTracking,
+        )
+            .chain(),
     );
 
     schedule.add_systems(packets::chunk_batch_ack::handle);
@@ -184,6 +189,9 @@ pub fn register_schedules(timed: &mut Scheduler, shutdown_schedule: &mut Schedul
         .with_phase(Duration::from_millis(250)),
     );
     shutdown_schedule.set_executor_kind(ExecutorKind::SingleThreaded);
+
+    // Force the chunk-saving systems to run before the world flushing and shutdown packet sending systems;
+    // otherwise we might end up with a world not fully saved if the server is killed at the wrong time during shutdown
     shutdown_schedule.configure_sets(
         (
             ShutdownPhase::EmitSaveMessages,
@@ -197,7 +205,8 @@ pub fn register_schedules(timed: &mut Scheduler, shutdown_schedule: &mut Schedul
         shutdown::send_save_message::send_save_message.in_set(ShutdownPhase::EmitSaveMessages),
     );
     mobs::register_save_systems(shutdown_schedule);
-    shutdown_schedule.add_systems(background::world_sync::sync_world.in_set(ShutdownPhase::FlushWorld));
+    shutdown_schedule
+        .add_systems(background::world_sync::sync_world.in_set(ShutdownPhase::FlushWorld));
     shutdown_schedule
         .add_systems(shutdown::send_shutdown_packet::handle.in_set(ShutdownPhase::ShutdownPackets));
 

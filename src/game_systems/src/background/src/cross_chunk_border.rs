@@ -25,6 +25,7 @@ pub fn cross_chunk_boarder(
             // For mobs, we update the chunk they are saved in
             let old_chunk_cords = event.old_chunk;
             let new_chunk_cords = event.new_chunk;
+            // Pull out the entity data from the old chunk. We have to do it this way cos holding locks on multiple chunks at once can easily deadlock
             let Some(extracted_old_data) = ({
                 let chunk = state.0.world.get_chunk(old_chunk_cords, Overworld);
                 match chunk {
