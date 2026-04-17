@@ -42,12 +42,14 @@ fn main() {
 
     let enum_name = Ident::new("EntityTypeEnum", proc_macro2::Span::call_site());
     let enum_def = quote! {
+        #[rustfmt::skip]
         #[derive(Eq, PartialEq, serde::Serialize, serde::Deserialize, Debug, Clone, Copy, Hash,)]
         pub enum #enum_name {
             #( #enum_variants ),*
         }
 
         impl #enum_name {
+            #[rustfmt::skip]
             pub fn to_entity_type(&self) -> temper_data::generated::entities::EntityType {
                 match self {
                     #( #id_match_arms )*

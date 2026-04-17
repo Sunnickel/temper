@@ -8,7 +8,7 @@ use temper_state::GlobalStateResource;
 use temper_world::WorldError;
 use tracing::error;
 
-pub fn cross_chunk_boarder(
+pub fn cross_chunk_border(
     mut chunk_cross_events: MessageReader<ChunkBoundaryCrossed>,
     query: Query<(Entity, &Identity, Has<PlayerMarker>)>,
     mut chunk_calc_messages: MessageWriter<ChunkCalc>,

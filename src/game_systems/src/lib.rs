@@ -116,7 +116,7 @@ fn register_tick_systems(schedule: &mut Schedule) {
             physics::velocity::handle,
             physics::collisions::handle,
             physics::chunk_boundary::handle,
-            background::cross_chunk_border::cross_chunk_boarder,
+            background::cross_chunk_border::cross_chunk_border,
         )
             .chain(),
     );

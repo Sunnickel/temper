@@ -81,7 +81,7 @@ fn mob_crossing_a_chunk_border_reloads_from_its_new_chunk() {
     boundary_schedule.add_systems(
         (
             chunk_boundary::handle,
-            cross_chunk_border::cross_chunk_boarder,
+            cross_chunk_border::cross_chunk_border,
         )
             .chain(),
     );
