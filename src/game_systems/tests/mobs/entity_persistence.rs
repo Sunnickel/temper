@@ -13,13 +13,17 @@ use temper_messages::load_chunk_entities::LoadChunkEntities;
 use temper_messages::save_chunk_entities::SaveChunkEntities;
 use temper_state::create_test_state;
 
-fn emit_save_for(chunk: temper_core::pos::ChunkPos) -> impl FnMut(MessageWriter<SaveChunkEntities>) {
+fn emit_save_for(
+    chunk: temper_core::pos::ChunkPos,
+) -> impl FnMut(MessageWriter<SaveChunkEntities>) {
     move |mut writer: MessageWriter<SaveChunkEntities>| {
         writer.write(SaveChunkEntities(chunk));
     }
 }
 
-fn emit_load_for(chunk: temper_core::pos::ChunkPos) -> impl FnMut(MessageWriter<LoadChunkEntities>) {
+fn emit_load_for(
+    chunk: temper_core::pos::ChunkPos,
+) -> impl FnMut(MessageWriter<LoadChunkEntities>) {
     move |mut writer: MessageWriter<LoadChunkEntities>| {
         writer.write(LoadChunkEntities(chunk));
     }
@@ -80,7 +84,11 @@ fn pig_round_trips_through_chunk_save_and_load() {
     )>();
 
     let loaded: Vec<_> = query.iter(&world).collect();
-    assert_eq!(loaded.len(), 1, "exactly one pig should be loaded back into ECS");
+    assert_eq!(
+        loaded.len(),
+        1,
+        "exactly one pig should be loaded back into ECS"
+    );
 
     let (
         identity,

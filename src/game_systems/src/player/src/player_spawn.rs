@@ -26,9 +26,11 @@ pub fn handle(
         let new_player_identity = &event.identity;
 
         // Get the new player's connection and components
-        let Ok((_, _, new_conn, player_properties)) = player_query.get(new_player_entity)
-        else {
-            error!("Failed to get new player components for tab sync: {:?}", new_player_entity);
+        let Ok((_, _, new_conn, player_properties)) = player_query.get(new_player_entity) else {
+            error!(
+                "Failed to get new player components for tab sync: {:?}",
+                new_player_entity
+            );
             continue;
         };
 

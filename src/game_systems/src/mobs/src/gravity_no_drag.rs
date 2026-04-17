@@ -45,19 +45,17 @@ crate::define_standard_mob_save_load!(
 );
 
 pub fn register_load_systems(schedule: &mut Schedule) {
-    crate::add_systems_to_set!(schedule, crate::MobLoadSystems, [
-        load_axolotl,
-        load_magma_cube,
-        load_slime,
-        load_strider,
-    ]);
+    crate::add_systems_to_set!(
+        schedule,
+        crate::MobLoadSystems,
+        [load_axolotl, load_magma_cube, load_slime, load_strider,]
+    );
 }
 
 pub fn register_save_systems(schedule: &mut Schedule) {
-    crate::add_systems_to_set!(schedule, crate::MobSaveSystems, [
-        save_axolotl,
-        save_magma_cube,
-        save_slime,
-        save_strider,
-    ]);
+    crate::add_systems_to_set!(
+        schedule,
+        crate::MobSaveSystems,
+        [save_axolotl, save_magma_cube, save_slime, save_strider,]
+    );
 }

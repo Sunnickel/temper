@@ -8,11 +8,11 @@ pub mod vanilla_chunk_format;
 
 use crate::errors::WorldError;
 use crate::heightmap::Heightmaps;
-use crate::section::{ChunkSection, AIR};
+use crate::section::{AIR, ChunkSection};
 use dashmap::DashMap;
 use serde_derive::{Deserialize, Serialize};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use temper_core::block_state_id::BlockStateId;
 use temper_core::pos::{ChunkBlockPos, ChunkHeight};
 use temper_entities::entity_types::EntityTypeEnum;

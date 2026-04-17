@@ -102,11 +102,13 @@ fn player_can_unload_entities_by_moving_away_and_reload_them_after_returning() {
     }
 
     let mut chunk_calc_schedule = Schedule::default();
-    chunk_calc_schedule.add_systems((emit_chunk_calc_for(player_entity), chunk_calculator::handle).chain());
+    chunk_calc_schedule
+        .add_systems((emit_chunk_calc_for(player_entity), chunk_calculator::handle).chain());
     chunk_calc_schedule.run(&mut world);
 
     let mut unload_schedule = Schedule::default();
-    unload_schedule.add_systems((entity_unloader::handle, save_fox, chunk_unloader::handle).chain());
+    unload_schedule
+        .add_systems((entity_unloader::handle, save_fox, chunk_unloader::handle).chain());
     unload_schedule.run(&mut world);
 
     let mut fox_query = world.query::<EntityRef<'_>>();
@@ -114,7 +116,10 @@ fn player_can_unload_entities_by_moving_away_and_reload_them_after_returning() {
         .iter(&world)
         .filter(|entity| entity.contains::<Fox>())
         .count();
-    assert_eq!(live_foxes, 0, "fox should despawn when its chunk is unloaded");
+    assert_eq!(
+        live_foxes, 0,
+        "fox should despawn when its chunk is unloaded"
+    );
     assert!(
         !state
             .0
@@ -189,7 +194,11 @@ fn player_can_unload_entities_by_moving_away_and_reload_them_after_returning() {
         .filter(|(_, _, _, _, is_fox, _, _, _)| *is_fox)
         .collect();
 
-    assert_eq!(loaded_foxes.len(), 1, "fox should reload when the player returns");
+    assert_eq!(
+        loaded_foxes.len(),
+        1,
+        "fox should reload when the player returns"
+    );
 
     let (
         identity,

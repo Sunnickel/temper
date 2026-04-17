@@ -161,51 +161,59 @@ crate::define_standard_mob_save_load!(
 );
 
 pub fn register_load_systems(schedule: &mut Schedule) {
-    crate::add_systems_to_set!(schedule, crate::MobLoadSystems, [
-        load_allay,
-        load_bat,
-        load_bee,
-        load_blaze,
-        load_breeze,
-        load_cod,
-        load_dolphin,
-        load_drowned,
-        load_elder_guardian,
-        load_ghast,
-        load_glow_squid,
-        load_guardian,
-        load_parrot,
-        load_phantom,
-        load_pufferfish,
-        load_salmon,
-        load_squid,
-        load_tadpole,
-        load_tropical_fish,
-        load_vex,
-    ]);
+    crate::add_systems_to_set!(
+        schedule,
+        crate::MobLoadSystems,
+        [
+            load_allay,
+            load_bat,
+            load_bee,
+            load_blaze,
+            load_breeze,
+            load_cod,
+            load_dolphin,
+            load_drowned,
+            load_elder_guardian,
+            load_ghast,
+            load_glow_squid,
+            load_guardian,
+            load_parrot,
+            load_phantom,
+            load_pufferfish,
+            load_salmon,
+            load_squid,
+            load_tadpole,
+            load_tropical_fish,
+            load_vex,
+        ]
+    );
 }
 
 pub fn register_save_systems(schedule: &mut Schedule) {
-    crate::add_systems_to_set!(schedule, crate::MobSaveSystems, [
-        save_allay,
-        save_bat,
-        save_bee,
-        save_blaze,
-        save_breeze,
-        save_cod,
-        save_dolphin,
-        save_drowned,
-        save_elder_guardian,
-        save_ghast,
-        save_glow_squid,
-        save_guardian,
-        save_parrot,
-        save_phantom,
-        save_pufferfish,
-        save_salmon,
-        save_squid,
-        save_tadpole,
-        save_tropical_fish,
-        save_vex,
-    ]);
+    crate::add_systems_to_set!(
+        schedule,
+        crate::MobSaveSystems,
+        [
+            save_allay,
+            save_bat,
+            save_bee,
+            save_blaze,
+            save_breeze,
+            save_cod,
+            save_dolphin,
+            save_drowned,
+            save_elder_guardian,
+            save_ghast,
+            save_glow_squid,
+            save_guardian,
+            save_parrot,
+            save_phantom,
+            save_pufferfish,
+            save_salmon,
+            save_squid,
+            save_tadpole,
+            save_tropical_fish,
+            save_vex,
+        ]
+    );
 }

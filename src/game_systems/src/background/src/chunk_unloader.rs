@@ -73,8 +73,7 @@ pub fn handle(
 
                     trace!(
                         "Unloading live entity {:?} from chunk {:?} as it is no longer visible to any player.",
-                        entity,
-                        chunk_pos
+                        entity, chunk_pos
                     );
                     cmd.entity(entity).despawn();
                 }

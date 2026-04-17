@@ -35,7 +35,7 @@ pub fn destroy_entity_system(
         ),
         overlay: false,
     };
-    
+
     for event in destroy_entity_events.read() {
         if let Ok((_, position, identity, has_player_marker, conn_opt)) = query.get(event.0) {
             if !has_player_marker {
@@ -59,11 +59,11 @@ pub fn destroy_entity_system(
             }
         }
     }
-    
+
     let packet = RemoveEntitiesPacket {
         entity_ids: LengthPrefixedVec::new(destroyed_entities),
     };
-    
+
     for (_, _, _, has_player_marker, conn_opt) in query.iter() {
         if has_player_marker
             && let Some(conn) = conn_opt

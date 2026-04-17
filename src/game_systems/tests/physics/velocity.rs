@@ -50,7 +50,10 @@ fn velocity_no_update_when_unchanged() {
     schedule.run(&mut world);
 
     assert!(world.get::<Position>(entity).is_some());
-    assert_eq!(world.get::<Position>(entity).unwrap().coords, Vec3A::ZERO.as_dvec3());
+    assert_eq!(
+        world.get::<Position>(entity).unwrap().coords,
+        Vec3A::ZERO.as_dvec3()
+    );
 
     let reader = world.get_resource::<Messages<SendEntityUpdate>>().unwrap();
     let mut cursor = reader.get_cursor();

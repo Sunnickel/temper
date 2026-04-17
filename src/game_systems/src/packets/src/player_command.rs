@@ -40,10 +40,7 @@ pub fn handle(
                         continue;
                     }
                     if let Err(err) = writer.send_packet_ref(&packet) {
-                        tracing::error!(
-                            "Failed to send sprint-start metadata packet: {:?}",
-                            err
-                        );
+                        tracing::error!("Failed to send sprint-start metadata packet: {:?}", err);
                     }
                 }
             }
@@ -56,10 +53,7 @@ pub fn handle(
                         continue;
                     }
                     if let Err(err) = writer.send_packet_ref(&packet) {
-                        tracing::error!(
-                            "Failed to send sprint-stop metadata packet: {:?}",
-                            err
-                        );
+                        tracing::error!("Failed to send sprint-stop metadata packet: {:?}", err);
                     }
                 }
             }

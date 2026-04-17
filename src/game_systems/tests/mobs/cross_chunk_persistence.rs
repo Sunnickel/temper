@@ -14,13 +14,17 @@ use temper_messages::load_chunk_entities::LoadChunkEntities;
 use temper_messages::save_chunk_entities::SaveChunkEntities;
 use temper_state::create_test_state;
 
-fn emit_save_for(chunk: temper_core::pos::ChunkPos) -> impl FnMut(MessageWriter<SaveChunkEntities>) {
+fn emit_save_for(
+    chunk: temper_core::pos::ChunkPos,
+) -> impl FnMut(MessageWriter<SaveChunkEntities>) {
     move |mut writer: MessageWriter<SaveChunkEntities>| {
         writer.write(SaveChunkEntities(chunk));
     }
 }
 
-fn emit_load_for(chunk: temper_core::pos::ChunkPos) -> impl FnMut(MessageWriter<LoadChunkEntities>) {
+fn emit_load_for(
+    chunk: temper_core::pos::ChunkPos,
+) -> impl FnMut(MessageWriter<LoadChunkEntities>) {
     move |mut writer: MessageWriter<LoadChunkEntities>| {
         writer.write(LoadChunkEntities(chunk));
     }
@@ -74,7 +78,13 @@ fn mob_crossing_a_chunk_border_reloads_from_its_new_chunk() {
     }
 
     let mut boundary_schedule = Schedule::default();
-    boundary_schedule.add_systems((chunk_boundary::handle, cross_chunk_border::cross_chunk_boarder).chain());
+    boundary_schedule.add_systems(
+        (
+            chunk_boundary::handle,
+            cross_chunk_border::cross_chunk_boarder,
+        )
+            .chain(),
+    );
     boundary_schedule.run(&mut world);
 
     {
@@ -116,7 +126,11 @@ fn mob_crossing_a_chunk_border_reloads_from_its_new_chunk() {
         .iter(&world)
         .filter(|(_, _, _, is_fox)| *is_fox)
         .collect();
-    assert_eq!(loaded_foxes.len(), 1, "fox should load once from the new chunk");
+    assert_eq!(
+        loaded_foxes.len(),
+        1,
+        "fox should load once from the new chunk"
+    );
 
     let (identity, position, last_chunk, is_fox) = loaded_foxes[0];
     assert!(is_fox, "reloaded entity should still have the Fox marker");

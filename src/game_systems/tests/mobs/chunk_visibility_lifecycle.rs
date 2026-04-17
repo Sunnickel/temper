@@ -49,16 +49,17 @@ fn spawn_test_player(world: &mut World, position: Position, loaded_chunk: ChunkP
     let mut receiver = ChunkReceiver::default();
     receiver.loaded.insert((loaded_chunk.x(), loaded_chunk.z()));
 
-    world.spawn((
-        position,
-        receiver,
-        ClientInformationComponent {
-            view_distance: 2,
-            ..Default::default()
-        },
-        PlayerMarker,
-    ))
-    .id()
+    world
+        .spawn((
+            position,
+            receiver,
+            ClientInformationComponent {
+                view_distance: 2,
+                ..Default::default()
+            },
+            PlayerMarker,
+        ))
+        .id()
 }
 
 #[test]
@@ -120,17 +121,31 @@ fn multiple_entities_in_one_chunk_reload_together_when_player_returns() {
     chunk_calc_schedule.run(&mut world);
 
     let mut unload_schedule = Schedule::default();
-    unload_schedule.add_systems((entity_unloader::handle, save_fox, save_pig, chunk_unloader::handle).chain());
+    unload_schedule.add_systems(
+        (
+            entity_unloader::handle,
+            save_fox,
+            save_pig,
+            chunk_unloader::handle,
+        )
+            .chain(),
+    );
     unload_schedule.run(&mut world);
 
     let mut entity_ref_query = world.query::<EntityRef<'_>>();
     assert_eq!(
-        entity_ref_query.iter(&world).filter(|entity| entity.contains::<Fox>()).count(),
+        entity_ref_query
+            .iter(&world)
+            .filter(|entity| entity.contains::<Fox>())
+            .count(),
         0,
         "fox should unload when the player leaves the chunk"
     );
     assert_eq!(
-        entity_ref_query.iter(&world).filter(|entity| entity.contains::<Pig>()).count(),
+        entity_ref_query
+            .iter(&world)
+            .filter(|entity| entity.contains::<Pig>())
+            .count(),
         0,
         "pig should unload when the player leaves the chunk"
     );
@@ -141,7 +156,11 @@ fn multiple_entities_in_one_chunk_reload_together_when_player_returns() {
             .world
             .get_chunk(chunk, Dimension::Overworld)
             .expect("saved chunk should exist");
-        assert_eq!(saved_chunk.entities.len(), 2, "both entities should be persisted");
+        assert_eq!(
+            saved_chunk.entities.len(),
+            2,
+            "both entities should be persisted"
+        );
     }
     state.0.world.get_cache().clear();
 
@@ -232,7 +251,8 @@ fn chunk_stays_loaded_while_a_second_player_keeps_it_visible() {
     chunk_calc_schedule.run(&mut world);
 
     let mut unload_schedule = Schedule::default();
-    unload_schedule.add_systems((entity_unloader::handle, save_fox, chunk_unloader::handle).chain());
+    unload_schedule
+        .add_systems((entity_unloader::handle, save_fox, chunk_unloader::handle).chain());
     unload_schedule.run(&mut world);
 
     let mut fox_query = world.query::<(&Identity, Has<Fox>)>();

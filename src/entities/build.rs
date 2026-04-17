@@ -3,7 +3,7 @@ use proc_macro2::Ident;
 use quote::quote;
 use std::fs;
 use std::path::Path;
-use syn::{parse_file, Item};
+use syn::{Item, parse_file};
 
 fn main() {
     println!("cargo::rerun-if-changed=src/markers.rs");

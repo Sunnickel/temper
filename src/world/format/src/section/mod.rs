@@ -1,5 +1,3 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 use crate::errors::WorldError;
 use crate::light::{LightStorage, SectionLightData};
 use crate::section::biome::{BiomeData, BiomeType};
@@ -9,6 +7,8 @@ use crate::section::uniform::UniformSection;
 use crate::vanilla_chunk_format::Section;
 use deepsize::DeepSizeOf;
 use serde_derive::{Deserialize, Serialize};
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use temper_core::block_state_id::BlockStateId;
 use temper_core::pos::SectionBlockPos;
 use temper_macros::block;

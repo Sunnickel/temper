@@ -38,28 +38,21 @@ pub fn send_new_entities(
         &Position,
         &ClientInformationComponent,
     )>,
-    entity_query: Query<(
-        Entity,
-        &Identity,
-        &Position,
-        &Rotation,
-        Has<PlayerMarker>,
-    )>,
+    entity_query: Query<(Entity, &Identity, &Position, &Rotation, Has<PlayerMarker>)>,
 ) {
     for (conn, mut entity_tracker, player_pos, client_info) in player_query.iter_mut() {
         let mut unresolved = Vec::new();
 
         while let Some((uuid, entity_type_id)) = entity_tracker.to_track.pop() {
-            if let Some((entity, identity, entity_pos, rot, is_player)) =
-                entity_query
-                    .iter()
-                    .find_map(|(entity, identity, pos, rot, is_player)| {
-                        if identity.uuid == uuid {
-                            Some((entity, identity, pos, rot, is_player))
-                        } else {
-                            None
-                        }
-                    })
+            if let Some((entity, identity, entity_pos, rot, is_player)) = entity_query
+                .iter()
+                .find_map(|(entity, identity, pos, rot, is_player)| {
+                    if identity.uuid == uuid {
+                        Some((entity, identity, pos, rot, is_player))
+                    } else {
+                        None
+                    }
+                })
             {
                 if entity_tracker.tracking.contains(&entity) {
                     continue;
