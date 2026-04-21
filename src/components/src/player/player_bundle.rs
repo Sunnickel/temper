@@ -1,6 +1,7 @@
 use crate::bounds::CollisionBounds;
 use crate::entity_identity::Identity;
 use crate::player::chunk_receiver::ChunkReceiver;
+use crate::player::entity_tracker::EntityTracker;
 use crate::player::grounded::OnGround;
 use crate::player::player_marker::PlayerMarker;
 use crate::player::player_properties::PlayerProperties;
@@ -36,6 +37,7 @@ pub struct PlayerBundle {
     pub on_ground: OnGround,
     pub chunk_receiver: ChunkReceiver,
     pub collision_bounds: CollisionBounds,
+    pub entity_tracker: EntityTracker,
 
     // Inventory
     pub inventory: Inventory,

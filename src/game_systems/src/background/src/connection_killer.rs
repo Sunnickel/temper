@@ -123,7 +123,10 @@ pub fn connection_killer(
             }
 
             // --- 3. Fire PlayerLeaveEvent ---
-            leave_events.write(PlayerLeft(player_identity.clone()));
+            leave_events.write(PlayerLeft {
+                identity: player_identity.clone(),
+                entity: disconnecting_entity,
+            });
         } else {
             // --- FAILURE: This is a "half-player" or zombie ---
             warn!(
@@ -137,7 +140,10 @@ pub fn connection_killer(
                     "-> (Half-player had identity: {})",
                     player_identity.name.as_ref().expect("No Player Name")
                 );
-                leave_events.write(PlayerLeft(player_identity.clone()));
+                leave_events.write(PlayerLeft {
+                    identity: player_identity.clone(),
+                    entity: disconnecting_entity,
+                });
             } else {
                 warn!("-> (Half-player didn't even have an identity component!)");
             }
