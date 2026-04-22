@@ -18,7 +18,7 @@ static PATHFINDING_COSTS: LazyLock<Vec<i32>> =
 /// - 16 : fire, lava, magma, lit campfire
 #[inline]
 pub fn block_penalty(id: BlockStateId) -> i32 {
-    PATHFINDING_COSTS[id.raw() as usize]
+    PATHFINDING_COSTS.get(id.raw() as usize).copied().unwrap_or(IMPASSABLE)
 }
 
 /// Compute the pathfinding cost for a single block data entry.
