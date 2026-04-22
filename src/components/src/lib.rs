@@ -10,8 +10,8 @@ pub mod combat;
 pub mod last_chunk_pos;
 pub mod last_synced_position;
 pub mod metadata;
-pub mod physical;
 pub mod pathfinder;
+pub mod physical;
 pub mod spawn;
 
 // Interaction components re-exports
