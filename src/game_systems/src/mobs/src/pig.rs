@@ -51,7 +51,7 @@ pub fn tick_pig(
         // Repath when the cooldown expires OR when the pig has followed a path
         // to its end (but not when pathfinding simply failed to find a route).
         let path_reached_end =
-            !pathfinder.has_path() && !pathfinder.path.is_empty() && !pathfinder.is_searching();
+            !pathfinder.has_path() && !pathfinder.path.is_empty() && !pathfinder.is_searching;
 
         if ai.repath_cooldown == 0 || path_reached_end {
             pathfinder.target = players
