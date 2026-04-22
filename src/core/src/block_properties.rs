@@ -70,7 +70,7 @@ fn compute_solid(data: &BlockData) -> bool {
 }
 
 /// Returns true for blocks that have no collision box (decorative, vegetation, etc.)
-fn is_non_solid_decoration(name: &str) -> bool {
+pub fn is_non_solid_decoration(name: &str) -> bool {
     if matches!(
         name,
         "grass"

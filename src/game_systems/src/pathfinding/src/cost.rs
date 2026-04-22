@@ -79,63 +79,16 @@ fn compute_cost(data: &BlockData) -> i32 {
         return if open { 0 } else { IMPASSABLE };
     }
 
-    // Known non-solid blocks
-    if is_non_solid(name) {
+    // Known non-solid blocks (shared definition with the collision system)
+    // lily_pad, dripleaves: walkable surfaces not in the collision list
+    if temper_core::block_properties::is_non_solid_decoration(name)
+        || matches!(name, "lily_pad" | "big_dripleaf" | "small_dripleaf")
+    {
         return 0;
     }
 
     // Default: solid/impassable
     IMPASSABLE
-}
-
-fn is_non_solid(name: &str) -> bool {
-    if matches!(
-        name,
-        "grass"
-            | "short_grass"
-            | "tall_grass"
-            | "fern"
-            | "large_fern"
-            | "dead_bush"
-            | "lily_pad"
-            | "big_dripleaf"
-            | "small_dripleaf"
-            | "snow"
-            | "string"
-            | "nether_portal"
-            | "spore_blossom"
-            | "glow_lichen"
-            | "dandelion"
-            | "poppy"
-            | "blue_orchid"
-            | "allium"
-            | "azure_bluet"
-            | "oxeye_daisy"
-            | "cornflower"
-            | "lily_of_the_valley"
-            | "wither_rose"
-            | "sunflower"
-            | "lilac"
-            | "rose_bush"
-            | "peony"
-            | "torchflower"
-            | "pitcher_plant"
-            | "pitcher_pod"
-    ) {
-        return true;
-    }
-
-    name.ends_with("_button")
-        || name.ends_with("_pressure_plate")
-        || name.ends_with("_sign")
-        || name.ends_with("_banner")
-        || name.ends_with("_carpet")
-        || name.ends_with("_torch")
-        || name.ends_with("_sapling")
-        || name.ends_with("_mushroom")
-        || name.ends_with("_flower")
-        || name.ends_with("_vine")
-        || name.ends_with("_roots")
 }
 
 #[cfg(test)]
