@@ -1,5 +1,5 @@
 use bevy_ecs::prelude::*;
-use bevy_math::Vec3A;
+use bevy_math::{Vec2, Vec3A};
 use pathfinding::{Pathfinder, pos_to_block};
 use temper_components::player::grounded::OnGround;
 use temper_components::player::player_marker::PlayerMarker;
@@ -88,13 +88,14 @@ pub fn tick_pig(
         }
 
         // Steer horizontally toward the center of the next waypoint block.
-        let dx = (next.pos.x as f64 + 0.5 - pig_pos.x) as f32;
-        let dz = (next.pos.z as f64 + 0.5 - pig_pos.z) as f32;
-        let len = (dx * dx + dz * dz).sqrt();
+        let target = Vec2::new(next.pos.x as f32 + 0.5, next.pos.z as f32 + 0.5);
+        let current = Vec2::new(pig_pos.x as f32, pig_pos.z as f32);
+        let dir = target - current;
 
-        if len > 0.1 {
-            velocity.vec.x = (dx / len) * PIG_WALK_SPEED;
-            velocity.vec.z = (dz / len) * PIG_WALK_SPEED;
+        if dir.length_squared() > 0.01 {
+            let normalized = dir.normalize();
+            velocity.vec.x = normalized.x * PIG_WALK_SPEED;
+            velocity.vec.z = normalized.y * PIG_WALK_SPEED;
         } else {
             velocity.vec.x = 0.0;
             velocity.vec.z = 0.0;
