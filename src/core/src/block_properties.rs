@@ -6,8 +6,14 @@ use crate::block_state_id::{BlockStateId, ID2BLOCK};
 /// Precomputed solidity for all block states.
 /// A block is solid if it has a full collision box that entities cannot walk through.
 /// Indexed by `BlockStateId::raw()`.
-static SOLID_BLOCKS: LazyLock<Vec<bool>> =
-    LazyLock::new(|| ID2BLOCK.get().expect("ID2BLOCK not initialized").iter().map(compute_solid).collect());
+static SOLID_BLOCKS: LazyLock<Vec<bool>> = LazyLock::new(|| {
+    ID2BLOCK
+        .get()
+        .expect("ID2BLOCK not initialized")
+        .iter()
+        .map(compute_solid)
+        .collect()
+});
 
 /// Returns whether a block is solid (has a full collision box).
 ///
@@ -15,7 +21,10 @@ static SOLID_BLOCKS: LazyLock<Vec<bool>> =
 /// system and the pathfinding system.
 #[inline]
 pub fn is_solid(id: BlockStateId) -> bool {
-    SOLID_BLOCKS[id.raw() as usize]
+    SOLID_BLOCKS
+        .get(id.raw() as usize)
+        .copied()
+        .unwrap_or(false)
 }
 
 /// Determine whether a block data entry represents a solid block.

@@ -32,9 +32,11 @@ pub struct MobLoadSystems;
 pub struct MobSaveSystems;
 
 pub fn register_tick_systems(schedule: &mut Schedule) {
-    schedule.add_systems(pathfinding::tick_pathfinder);
-    schedule.add_systems(pig::tick_pig.after(pathfinding::tick_pathfinder));
-    schedule.add_systems(pig::tick_pig_particles);
+    schedule.add_systems((
+        pathfinding::tick_pathfinder,
+        pig::tick_pig,
+        pig::tick_pig_particles,
+    ).chain());
 }
 
 pub fn register_load_systems(schedule: &mut Schedule) {
