@@ -349,12 +349,10 @@ fn is_clear_above(world: &temper_world::World, x: i32, y: i32, z: i32, height: u
 
 fn get_block(world: &temper_world::World, x: i32, y: i32, z: i32) -> BlockStateId {
     let pos = BlockPos::of(x, y, z);
-    // Only read from cache — never generate chunks during pathfinding
     world
-        .get_cache()
-        .get(&(pos.chunk(), Dimension::Overworld))
+        .get_chunk(pos.chunk(), Dimension::Overworld)
         .map(|chunk| chunk.get_block(pos.chunk_block_pos()))
-        .unwrap_or_default() // unloaded chunk = air; mob won't path there (no solid floor)
+        .unwrap_or_default() // chunk not in cache or DB = air; mob won't path there (no solid floor)
 }
 
 #[cfg(test)]
