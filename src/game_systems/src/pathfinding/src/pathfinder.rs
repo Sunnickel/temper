@@ -13,18 +13,24 @@ use crate::astar::{AStarSearch, SearchStep};
 #[derive(Component, Default)]
 pub struct PathfinderSearch(pub(crate) Option<AStarSearch>);
 
+type PathfinderQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static mut Pathfinder,
+        Option<&'static mut PathfinderSearch>,
+        &'static Position,
+        &'static EntityMetadata,
+        Has<Baby>,
+    ),
+>;
+
 /// Advances incremental A* searches for all entities with a Pathfinder component.
 /// Must run before mob AI systems so the updated path is available each tick.
 pub fn tick_pathfinder(
     mut commands: Commands,
-    mut query: Query<(
-        Entity,
-        &mut Pathfinder,
-        Option<&mut PathfinderSearch>,
-        &Position,
-        &EntityMetadata,
-        Has<Baby>,
-    )>,
+    mut query: PathfinderQuery,
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
