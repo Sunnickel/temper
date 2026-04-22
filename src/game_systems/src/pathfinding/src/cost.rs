@@ -9,7 +9,7 @@ pub const IMPASSABLE: i32 = i32::MIN;
 /// Precomputed pathfinding costs for all block states.
 /// Indexed by `BlockStateId::raw()`.
 static PATHFINDING_COSTS: LazyLock<Vec<i32>> =
-    LazyLock::new(|| ID2BLOCK.iter().map(compute_cost).collect());
+    LazyLock::new(|| ID2BLOCK.get().expect("ID2BLOCK not initialized").iter().map(compute_cost).collect());
 
 /// Returns the pathfinding penalty for a block, following the Minecraft wiki penalty system:
 /// - IMPASSABLE: solid blocks, fences, walls, closed doors, cactus, lava, etc.

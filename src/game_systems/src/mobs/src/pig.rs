@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use bevy_math::Vec3A;
 use pathfinding::{Pathfinder, pos_to_block};
 use temper_components::player::grounded::OnGround;
-use temper_components::player::player_identity::PlayerIdentity;
+use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::position::Position;
 use temper_components::player::velocity::Velocity;
 use temper_entities::markers::entity_types::Pig;
@@ -36,7 +36,7 @@ type PigQuery<'a> = (
 pub fn tick_pig(
     mut commands: Commands,
     mut pigs: Query<PigQuery, With<Pig>>,
-    players: Query<&Position, With<PlayerIdentity>>,
+    players: Query<&Position, With<PlayerMarker>>,
 ) {
     for (entity, pig_pos, mut velocity, grounded, ai_opt, pf_opt) in pigs.iter_mut() {
         let (Some(mut ai), Some(mut pathfinder)) = (ai_opt, pf_opt) else {
@@ -104,7 +104,7 @@ pub fn tick_pig(
 
 pub fn tick_pig_particles(
     pigs: Query<(Entity, &Position), With<Pig>>,
-    players: Query<&Position, With<PlayerIdentity>>,
+    players: Query<&Position, With<PlayerMarker>>,
     mut msgs: MessageWriter<SendParticle>,
 ) {
     for pos in pigs.iter() {
