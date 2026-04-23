@@ -8,8 +8,7 @@ use crate::block_state_id::{BlockStateId, ID2BLOCK};
 /// Indexed by `BlockStateId::raw()`.
 static SOLID_BLOCKS: LazyLock<Vec<bool>> = LazyLock::new(|| {
     ID2BLOCK
-        .get()
-        .expect("ID2BLOCK not initialized")
+        .get_or_init(|| crate::block_state_id::create_block_mappings().0)
         .iter()
         .map(compute_solid)
         .collect()

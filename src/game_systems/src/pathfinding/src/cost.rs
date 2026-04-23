@@ -10,8 +10,7 @@ pub const IMPASSABLE: i32 = i32::MIN;
 /// Indexed by `BlockStateId::raw()`.
 static PATHFINDING_COSTS: LazyLock<Vec<i32>> = LazyLock::new(|| {
     ID2BLOCK
-        .get()
-        .expect("ID2BLOCK not initialized")
+        .get_or_init(|| temper_core::block_state_id::create_block_mappings().0)
         .iter()
         .map(compute_cost)
         .collect()
