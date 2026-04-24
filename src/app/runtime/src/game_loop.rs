@@ -291,7 +291,7 @@ fn tcp_conn_acceptor(
 
             // Spawn LAN broadcast pinger (for local network server discovery)
             async_runtime.spawn(spawn_lan_pinger());
-            
+
             if get_global_config().block_scanner_ips {
                 async_runtime.spawn(blocklist(state.clone()));
             }
@@ -318,7 +318,6 @@ fn tcp_conn_acceptor(
                                     Ok((mut stream, _)) => {
                                         let addy = stream.peer_addr()?;
                                         debug!("Got TCP connection from {}", addy);
-                                        
                                         if state.blocked_ips.contains(&addy.ip().to_string()) {
                                             debug!("Rejected connection from blocked IP: {}", addy);
                                             stream.write_all("Lol nah".as_bytes()).await.ok();
