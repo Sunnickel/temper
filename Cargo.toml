@@ -152,7 +152,7 @@ temper-game-systems = { path = "src/game_systems" }
 interactions = { path = "src/game_systems/src/interactions" }
 
 # Asynchronous
-tokio = { version = "1.51.1", features = [
+tokio = { version = "1.52.1", features = [
     "macros",
     "net",
     "rt",
@@ -166,14 +166,14 @@ tokio = { version = "1.51.1", features = [
 # Logging
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-tracing-appender = "0.2.4"
+tracing-appender = "0.2.5"
 tracing-tracy = { version = "0.11.4", features = ["timer-fallback", "ondemand", "fibers", "context-switch-tracing", "delayed-init"] }
 log = "0.4.29"
 tracy-client = "0.18.4"
 
 # Concurrency/Parallelism
 parking_lot = "0.12.5"
-rayon = "1.11.0"
+rayon = "1.12.0"
 crossbeam-channel = "0.5.15"
 rusty_pool = "0.7.0"
 crossbeam-queue = "0.3.12"
@@ -186,7 +186,7 @@ thiserror = "2.0.18"
 anyhow = "1.0.102"
 
 # Cryptography
-rand = "0.10.0"
+rand = "0.10.1"
 fnv = "1.0.7"
 wyhash = "0.6.0"
 ahash = "0.8.12"
@@ -216,7 +216,7 @@ byteorder = "1.5.0"
 
 # Data types
 dashmap = { version = "7.0.0-rc2", features = ["serde"] }
-uuid = { version = "1.23.0", features = ["v4", "v3", "serde"] }
+uuid = { version = "1.23.1", features = ["v4", "v3", "serde"] }
 indexmap = { version = "2.14.0", features = ["serde"] }
 bimap = "0.6.3"
 
@@ -232,7 +232,7 @@ type_hash = "0.3.0"
 
 # Magic
 dhat = "0.3.3"
-ctor = "0.9.1"
+ctor = "0.10.1"
 
 # Compression/Decompression
 yazi = "0.2.1"
@@ -258,10 +258,10 @@ mime_guess = "2.0.5"
 ## TUI/CLI
 crossterm = "0.29.0"
 ratatui-core = "0.1.0"
-tui-input = "0.15.1"
+tui-input = "0.15.3"
 ratatui = "0.30.0"
 tui-logger = { version = "0.18.2", features = ["tracing-support", "crossterm"] }
-clap = { version = "4.6.0", features = ["derive", "env"] }
+clap = { version = "4.6.1", features = ["derive", "env"] }
 indicatif = "0.18.4"
 colored = "3.1.1"
 unicode-width = "0.2.2"
@@ -280,7 +280,7 @@ phf = { version = "0.13.1", features = ["macros"] }
 phf_codegen = { version = "0.13.1" }
 
 # Web server
-axum = { version = "0.8.8", features = ["tokio", "ws"] }
+axum = { version = "0.8.9", features = ["tokio", "ws"] }
 
 # Stats
 sysinfo = { version = "0.38.4", default-features = false, features = ["system"] }
