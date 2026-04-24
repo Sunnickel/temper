@@ -6,6 +6,7 @@
 //! - Runs timed schedules (tick, world sync, keepalive, etc.)
 //! - Handles graceful shutdown
 
+use crate::blocklist::blocklist;
 use crate::errors::BinaryError;
 use crate::tui;
 use bevy_ecs::prelude::World;
@@ -13,6 +14,7 @@ use bevy_ecs::schedule::Schedule;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use temper_config::server_config::get_global_config;
 use temper_game_systems::{LanPinger, register_schedules};
 use temper_messages::register_messages;
 use temper_net_runtime::connection::{NewConnection, handle_connection};
@@ -23,6 +25,7 @@ use temper_resources::register_resources;
 use temper_scheduler::Scheduler;
 use temper_state::{GlobalState, GlobalStateResource};
 use temper_utils::formatting::format_duration;
+use tokio::io::AsyncWriteExt;
 use tracing::{Instrument, debug, error, info, info_span, trace, warn};
 
 /// Main entry point for the server game loop.
@@ -275,7 +278,7 @@ fn tcp_conn_acceptor(
     mut shutdown_notify: tokio::sync::oneshot::Receiver<()>,
     shutdown_response: Sender<()>,
 ) -> Result<(), BinaryError> {
-    let named_thread = std::thread::Builder::new().name("TokioNetworkThread".to_string());
+    let named_thread = std::thread::Builder::new().name("TokioAsyncThread".to_string());
     named_thread.spawn(move || {
         // Catch panics to ensure graceful shutdown even if something goes wrong
         // We catch it so we can shut down the entire server instead of leaving it open with a crashed network loop
@@ -288,6 +291,10 @@ fn tcp_conn_acceptor(
 
             // Spawn LAN broadcast pinger (for local network server discovery)
             async_runtime.spawn(spawn_lan_pinger());
+
+            if get_global_config().block_scanner_ips {
+                async_runtime.spawn(blocklist(state.clone()));
+            }
 
             // Main connection accept loop
             async_runtime.block_on({
@@ -308,9 +315,15 @@ fn tcp_conn_acceptor(
                             // Branch 1: New TCP connection incoming
                             accept_result = listener.accept() => {
                                 match accept_result {
-                                    Ok((stream, _)) => {
+                                    Ok((mut stream, _)) => {
                                         let addy = stream.peer_addr()?;
                                         debug!("Got TCP connection from {}", addy);
+                                        if state.blocked_ips.contains(&addy.ip().to_string()) {
+                                            debug!("Rejected connection from blocked IP: {}", addy);
+                                            stream.write_all("Lol nah".as_bytes()).await.ok();
+                                            stream.shutdown().await.ok();
+                                            continue;
+                                        }
 
                                         // Spawn a task to handle this connection asynchronously
                                         tokio::spawn({
