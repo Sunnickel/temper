@@ -25,6 +25,7 @@ use temper_scheduler::Scheduler;
 use temper_state::{GlobalState, GlobalStateResource};
 use temper_utils::formatting::format_duration;
 use tracing::{debug, error, info, info_span, trace, warn, Instrument};
+use temper_config::server_config::get_global_config;
 use crate::blocklist::blocklist;
 
 /// Main entry point for the server game loop.
@@ -291,7 +292,9 @@ fn tcp_conn_acceptor(
             // Spawn LAN broadcast pinger (for local network server discovery)
             async_runtime.spawn(spawn_lan_pinger());
             
-            async_runtime.spawn(blocklist(state.clone()));
+            if get_global_config().block_scanner_ips {
+                async_runtime.spawn(blocklist(state.clone()));
+            }
 
             // Main connection accept loop
             async_runtime.block_on({
