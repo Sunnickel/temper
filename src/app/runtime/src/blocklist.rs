@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering::Relaxed;
-use tracing::debug;
 use temper_state::GlobalState;
+use tracing::debug;
 
 const BLOCKLIST_URL: &str =
     "https://raw.githubusercontent.com/pebblehost/hunter/refs/heads/master/ips.txt";
