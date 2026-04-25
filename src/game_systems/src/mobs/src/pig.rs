@@ -32,10 +32,7 @@ type PigQuery<'a> = (
     &'a mut Pathfinder,
 );
 
-pub fn init_pig(
-    mut commands: Commands,
-    pigs: Query<Entity, (With<Pig>, Without<PigAI>)>,
-) {
+pub fn init_pig(mut commands: Commands, pigs: Query<Entity, (With<Pig>, Without<PigAI>)>) {
     for entity in &pigs {
         commands.entity(entity).insert((
             PigAI::default(),
@@ -50,7 +47,6 @@ pub fn tick_pig(
     players: Query<&Position, With<PlayerMarker>>,
 ) {
     for (pig_pos, mut velocity, grounded, mut ai, mut pathfinder) in pigs.iter_mut() {
-
         ai.repath_cooldown = ai.repath_cooldown.saturating_sub(1);
 
         // Repath when the cooldown expires OR when the pig has followed a path
