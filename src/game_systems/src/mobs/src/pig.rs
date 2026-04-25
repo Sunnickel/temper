@@ -25,26 +25,31 @@ pub struct PigAI {
 }
 
 type PigQuery<'a> = (
-    Entity,
     &'a Position,
     &'a mut Velocity,
     &'a OnGround,
-    Option<&'a mut PigAI>,
-    Option<&'a mut Pathfinder>,
+    &'a mut PigAI,
+    &'a mut Pathfinder,
 );
 
-pub fn tick_pig(
+pub fn init_pig(
     mut commands: Commands,
+    pigs: Query<Entity, (With<Pig>, Without<PigAI>)>,
+) {
+    for entity in &pigs {
+        commands.entity(entity).insert((
+            PigAI::default(),
+            Pathfinder::default(),
+            pathfinding::PathfinderSearch::default(),
+        ));
+    }
+}
+
+pub fn tick_pig(
     mut pigs: Query<PigQuery, With<Pig>>,
     players: Query<&Position, With<PlayerMarker>>,
 ) {
-    for (entity, pig_pos, mut velocity, grounded, ai_opt, pf_opt) in pigs.iter_mut() {
-        let (Some(mut ai), Some(mut pathfinder)) = (ai_opt, pf_opt) else {
-            commands
-                .entity(entity)
-                .insert((PigAI::default(), Pathfinder::default()));
-            continue;
-        };
+    for (pig_pos, mut velocity, grounded, mut ai, mut pathfinder) in pigs.iter_mut() {
 
         ai.repath_cooldown = ai.repath_cooldown.saturating_sub(1);
 
