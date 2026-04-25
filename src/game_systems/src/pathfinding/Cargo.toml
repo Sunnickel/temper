@@ -10,7 +10,7 @@ temper-components = { workspace = true }
 bevy_ecs = { workspace = true }
 temper-entities = { workspace = true }
 temper-state = { workspace = true }
-rustc-hash = "2"
+rustc-hash = { workspace = true }
 arrayvec = "0.7"
 
 [dev-dependencies]
