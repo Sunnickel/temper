@@ -44,6 +44,7 @@ members = [
     "src/net/runtime",
     "src/particles",
     "src/performance",
+    "src/permissions",
     "src/physics",
     "src/registry",
     "src/resources",

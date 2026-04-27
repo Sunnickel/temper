@@ -1,0 +1,11 @@
+[package]
+name = "permissions"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+bevy_ecs = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true
