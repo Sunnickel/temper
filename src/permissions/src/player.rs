@@ -1,11 +1,14 @@
 use crate::group::{GroupID, PermissionGroups};
 use crate::{Access, PermissionSet, Permissions};
 use bevy_ecs::prelude::Component;
+use bitcode::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
 use tracing::error;
+use type_hash::TypeHash;
+use crate::default_groups::default_group;
 
 /// Component representing a player's permissions, including group memberships and individual permissions.
-#[derive(Component)]
+#[derive(Component, Clone, Debug, Encode, Decode, TypeHash)]
 pub struct PlayerPermission {
     groups: HashSet<GroupID>,
     permissions: PermissionSet,
@@ -20,7 +23,7 @@ impl Default for PlayerPermission {
 impl PlayerPermission {
     pub fn new() -> Self {
         PlayerPermission {
-            groups: HashSet::new(),
+            groups: HashSet::from([default_group().id]),
             permissions: HashMap::new(),
         }
     }

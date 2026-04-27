@@ -151,6 +151,7 @@ temper-particles = { path = "src/particles" }
 temper-resources = { path = "src/resources" }
 temper-game-systems = { path = "src/game_systems" }
 interactions = { path = "src/game_systems/src/interactions" }
+temper-permissions = { path = "src/permissions" }
 
 # Asynchronous
 tokio = { version = "1.52.1", features = [

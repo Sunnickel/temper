@@ -1,11 +1,13 @@
+use bitcode::{Decode, Encode};
 use std::collections::HashMap;
+use type_hash::TypeHash;
 
 pub mod group;
 pub mod player;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Encode, Decode, TypeHash)]
 pub enum Permissions {
     ALL,
 
@@ -16,7 +18,7 @@ pub enum Permissions {
     Kick,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Encode, Decode, TypeHash)]
 pub enum Access {
     Allow,
     Deny,

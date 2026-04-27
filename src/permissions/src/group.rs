@@ -1,8 +1,10 @@
-use crate::{Access, PermissionSet, Permissions};
+use crate::{Access, PermissionSet, Permissions, default_groups};
 use bevy_ecs::prelude::Resource;
+use bitcode::{Decode, Encode};
 use std::collections::HashMap;
+use type_hash::TypeHash;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode, Default, TypeHash)]
 pub struct GroupID(u32);
 
 impl GroupID {
@@ -52,7 +54,16 @@ impl Default for PermissionGroups {
 impl PermissionGroups {
     pub fn new() -> Self {
         PermissionGroups {
-            groups: HashMap::new(),
+            groups: HashMap::from([
+                (
+                    default_groups::DEFAULT_GROUP_ID,
+                    default_groups::default_group(),
+                ),
+                (
+                    default_groups::ADMIN_GROUP_ID,
+                    default_groups::admin_group(),
+                ),
+            ]),
             ordered: Vec::new(),
         }
     }

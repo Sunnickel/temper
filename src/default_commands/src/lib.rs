@@ -4,6 +4,7 @@ pub mod fly;
 pub mod gamemode;
 mod kill;
 pub mod nested;
+pub mod op;
 mod say;
 pub mod spawn;
 mod stop;

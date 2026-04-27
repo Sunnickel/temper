@@ -26,3 +26,4 @@ interactions = { workspace = true }
 tokio = { workspace = true }
 rand = { workspace = true }
 bitcode = { workspace = true }
+temper-permissions = { workspace = true }
