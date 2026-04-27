@@ -33,10 +33,20 @@ fn denies_permission_when_player_has_no_matching_permissions() {
 
 #[test]
 fn ignores_permissions_from_groups_the_player_is_not_in() {
-    let groups = groups([admin_group()]);
+    let groups = PermissionGroups::new();
     let player = PlayerPermission::new();
 
     assert!(!player.can(&groups, Permissions::StopServer));
+}
+
+#[test]
+fn default_admin_group_grants_all_permissions_when_player_is_in_group() {
+    let groups = PermissionGroups::new();
+    let mut player = PlayerPermission::new();
+
+    player.add_group(ADMIN_GROUP_ID);
+
+    assert!(player.can(&groups, Permissions::Kill));
 }
 
 #[test]

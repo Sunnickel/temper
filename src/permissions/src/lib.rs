@@ -16,6 +16,8 @@ pub enum Permissions {
     Kill,
     Ban,
     Kick,
+    Op,
+    DeOp,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Encode, Decode, TypeHash)]

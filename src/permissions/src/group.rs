@@ -2,6 +2,7 @@ use crate::{Access, PermissionSet, Permissions, default_groups};
 use bevy_ecs::prelude::Resource;
 use bitcode::{Decode, Encode};
 use std::collections::HashMap;
+use std::fmt::Display;
 use type_hash::TypeHash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode, Default, TypeHash)]
@@ -13,11 +14,17 @@ impl GroupID {
     }
 }
 
+impl Display for GroupID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GroupID({})", self.0)
+    }
+}
+
 pub struct PermissionGroup {
     pub name: String,
     pub(crate) id: GroupID,
     pub priority: u32,
-    pub(crate) permissions: PermissionSet,
+    pub permissions: PermissionSet,
 }
 
 impl PermissionGroup {
@@ -41,7 +48,7 @@ impl PermissionGroup {
 
 #[derive(Resource)]
 pub struct PermissionGroups {
-    pub(crate) groups: HashMap<GroupID, PermissionGroup>,
+    pub groups: HashMap<GroupID, PermissionGroup>,
     pub(crate) ordered: Vec<GroupID>,
 }
 
@@ -64,7 +71,10 @@ impl PermissionGroups {
                     default_groups::admin_group(),
                 ),
             ]),
-            ordered: Vec::new(),
+            ordered: vec![
+                default_groups::DEFAULT_GROUP_ID,
+                default_groups::ADMIN_GROUP_ID,
+            ],
         }
     }
 
