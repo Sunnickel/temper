@@ -1,10 +1,13 @@
-use bevy_ecs::prelude::{Entity, Query, Res};
+#![expect(clippy::type_complexity)]
+use bevy_ecs::prelude::{Entity, Query};
 use temper_commands::arg::entities::EntityArgument;
 use temper_commands::Sender;
 use temper_components::entity_identity::Identity;
 use temper_components::player::player_marker::PlayerMarker;
 use temper_macros::command;
 use temper_permissions::player::PlayerPermission;
+use temper_permissions::Access::Allow;
+use temper_permissions::Permissions::ALL;
 use temper_text::TextComponent;
 
 #[command("op")]
@@ -14,16 +17,15 @@ fn op_command(
     args: (
         Query<(Entity, &Identity, Option<&PlayerMarker>)>,
         Query<&mut PlayerPermission>,
-        Res<temper_permissions::group::PermissionGroups>,
     ),
 ) {
-    let (query, mut permissions_query, permission_groups) = args;
+    let (query, mut permissions_query) = args;
     let entities = target.resolve(query.into_iter());
 
     let is_permitted = match sender {
         Sender::Player(entity) => {
             if let Ok(player_perm) = permissions_query.get(entity) {
-                player_perm.can(&permission_groups, temper_permissions::Permissions::Op)
+                player_perm.can(temper_permissions::Permissions::Op)
             } else {
                 false
             }
@@ -41,7 +43,7 @@ fn op_command(
 
     for entity in entities {
         if let Ok(mut player_permission) = permissions_query.get_mut(entity) {
-            player_permission.add_group(temper_permissions::default_groups::ADMIN_GROUP_ID);
+            player_permission.set_permission(ALL, Allow);
             temper_core::mq::queue(
                 TextComponent::from("You have been opped".to_string()),
                 false,

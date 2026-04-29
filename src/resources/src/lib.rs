@@ -6,7 +6,6 @@ use bevy_ecs::prelude::World;
 use crossbeam_channel::Receiver;
 use temper_entities::PhysicalRegistry;
 use temper_net_runtime::connection::NewConnection;
-use temper_permissions::group::PermissionGroups;
 use temper_state::GlobalStateResource;
 
 pub mod new_conn;
@@ -28,5 +27,4 @@ pub fn register_resources(
     world.insert_resource(WorldTime::default());
     world.insert_resource(ServerCommandReceiver(server_command_recv));
     world.insert_resource(PhysicalRegistry::new());
-    world.insert_resource(PermissionGroups::default())
 }

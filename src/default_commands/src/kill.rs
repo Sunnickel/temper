@@ -8,7 +8,6 @@ use temper_components::entity_identity::Identity;
 use temper_components::player::player_marker::PlayerMarker;
 use temper_macros::command;
 use temper_messages::destroy_entity::DestroyEntity;
-use temper_permissions::group::PermissionGroups;
 use temper_permissions::player::PlayerPermission;
 
 #[command("kill")]
@@ -19,24 +18,26 @@ fn kill_command(
         Query<(Entity, &Identity, Option<&PlayerMarker>)>,
         MessageWriter<DestroyEntity>,
         Query<&PlayerPermission>,
-        Res<PermissionGroups>
     ),
 ) {
-    let (query, mut writer, permissions, permission_groups) = args;
-    
+    let (query, mut writer, permissions) = args;
+
     let is_permitted = match sender {
         Player(entity) => {
             if let Ok(player_perm) = permissions.get(entity) {
-                player_perm.can(&permission_groups, temper_permissions::Permissions::Kill)
+                player_perm.can(temper_permissions::Permissions::Kill)
             } else {
                 false
             }
-        },
+        }
         _ => true, // Non-player senders are always permitted
     };
-    
+
     if !is_permitted {
-        sender.send_message("You don't have permission to use this command.".into(), false);
+        sender.send_message(
+            "You don't have permission to use this command.".into(),
+            false,
+        );
         return;
     }
 
