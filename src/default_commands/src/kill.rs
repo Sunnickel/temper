@@ -1,6 +1,4 @@
-#![expect(clippy::type_complexity)]
-
-use bevy_ecs::prelude::{Entity, MessageWriter, Query, Res};
+use bevy_ecs::prelude::{Entity, MessageWriter, Query};
 use temper_commands::arg::entities::EntityArgument;
 use temper_commands::Sender;
 use temper_commands::Sender::Player;

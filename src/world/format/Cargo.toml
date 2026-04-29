@@ -35,5 +35,5 @@ rand = { workspace = true }
 name = "bench"
 harness = false
 
-
-
+[lints]
+workspace = true

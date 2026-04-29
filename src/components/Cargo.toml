@@ -21,3 +21,6 @@ type_hash = { workspace = true }
 serde = { workspace = true }
 crossbeam-queue = { workspace = true }
 temper-permissions = { workspace = true }
+
+[lints]
+workspace = true

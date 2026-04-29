@@ -101,10 +101,10 @@ impl Chunk {
     ///
     /// * `assert` - Checks if the given y value is in range of the height of the chunk.
     pub fn fill_section(&mut self, y: i8, state: BlockStateId) {
-        assert!(y as i16 >= self.height.min_y / 16);
-        assert!((y as i16) < (self.height.min_y + self.height.height as i16) / 16);
+        assert!(i16::from(y) >= self.height.min_y / 16);
+        assert!(i16::from(y) < (self.height.min_y + self.height.height as i16) / 16);
 
-        let section = y as i16 + -self.height.min_y / 16;
+        let section = i16::from(y) + -self.height.min_y / 16;
 
         self.sections[section as usize] = ChunkSection::new_uniform(state)
     }

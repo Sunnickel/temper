@@ -215,7 +215,7 @@ impl TryFrom<&Section> for ChunkSection {
                             .into_iter()
                             .map(|v| {
                                 if bits_per_block >= 9 {
-                                    BlockStateId::new(v as _)
+                                    BlockStateId::new(v.into())
                                 } else {
                                     BlockStateId::from_block_data(&palette[v as usize])
                                 }

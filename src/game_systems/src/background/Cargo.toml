@@ -29,3 +29,6 @@ temper-permissions = { workspace = true }
 
 [dev-dependencies]
 temper-encryption = { workspace = true }
+
+[lints]
+workspace = true

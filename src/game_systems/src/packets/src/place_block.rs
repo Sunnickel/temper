@@ -144,9 +144,9 @@ pub fn handle(
                                     z_offset_end: 1.0,
                                 },
                                 (
-                                    offset_pos.pos.x as f64,
-                                    offset_pos.pos.y as f64,
-                                    offset_pos.pos.z as f64,
+                                    f64::from(offset_pos.pos.x),
+                                    f64::from(offset_pos.pos.y),
+                                    f64::from(offset_pos.pos.z),
                                 ),
                             )
                         })
@@ -184,9 +184,9 @@ pub fn handle(
                                 }
                             },
                             click_position: DVec3::new(
-                                event.cursor_x as f64,
-                                event.cursor_y as f64,
-                                event.cursor_z as f64,
+                                f64::from(event.cursor_x),
+                                f64::from(event.cursor_y),
+                                f64::from(event.cursor_z),
                             ),
                             player_position: *pos,
                             player_rotation: *rot,

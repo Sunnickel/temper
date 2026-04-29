@@ -7,7 +7,6 @@ use temper_components::player::position::Position;
 use temper_net_runtime::connection::StreamWriter;
 use tracing::trace;
 
-#[expect(clippy::type_complexity)]
 pub fn refresh_visible_entities(
     mut player_query: Query<(Entity, &StreamWriter, &ChunkReceiver, &mut EntityTracker)>,
     entity_query: Query<(

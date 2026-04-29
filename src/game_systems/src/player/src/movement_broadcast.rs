@@ -120,7 +120,7 @@ pub fn handle_player_move(
         let head_rot_packet = if has_rotation {
             Some(SetHeadRotationPacket::new(
                 identity.entity_id,
-                NetAngle::from_degrees(rot.yaw as f64),
+                NetAngle::from_degrees(f64::from(rot.yaw)),
             ))
         } else {
             None

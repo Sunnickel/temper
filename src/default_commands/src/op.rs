@@ -1,4 +1,3 @@
-#![expect(clippy::type_complexity)]
 use bevy_ecs::prelude::{Entity, Query};
 use temper_commands::arg::entities::EntityArgument;
 use temper_commands::Sender;

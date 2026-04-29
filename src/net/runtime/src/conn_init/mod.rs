@@ -13,7 +13,6 @@ use temper_components::player::player_properties::PlayerProperties;
 use temper_encryption::read::EncryptedReader;
 use temper_macros::lookup_packet;
 use temper_permissions::player::PlayerPermission;
-use temper_permissions::Permissions;
 use temper_protocol::errors::NetError;
 use temper_protocol::errors::PacketError;
 use temper_protocol::incoming::handshake::Handshake;

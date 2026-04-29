@@ -25,3 +25,6 @@ temper-permissions = { workspace = true }
 ctor = { workspace = true }
 tracing = { workspace = true }
 bevy_ecs = { workspace = true }
+
+[lints]
+workspace = true

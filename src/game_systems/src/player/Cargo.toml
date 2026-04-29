@@ -27,3 +27,6 @@ tokio = { workspace = true }
 rand = { workspace = true }
 bitcode = { workspace = true }
 temper-permissions = { workspace = true }
+
+[lints]
+workspace = true

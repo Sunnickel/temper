@@ -1,4 +1,3 @@
-#![expect(clippy::type_complexity)]
 use bevy_ecs::prelude::{Query, Res, ResMut};
 use temper_components::active_effects::ActiveEffects;
 use temper_components::entity_identity::Identity;

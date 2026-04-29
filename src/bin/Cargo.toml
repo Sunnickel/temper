@@ -36,3 +36,6 @@ tempfile = { workspace = true }
 [[bin]]
 name = "temper"
 path = "src/main.rs"
+
+[lints]
+workspace = true
