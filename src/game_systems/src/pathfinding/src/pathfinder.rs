@@ -2,8 +2,8 @@ use bevy_ecs::prelude::*;
 use temper_components::pathfinder::Pathfinder;
 use temper_components::player::position::Position;
 use temper_core::pos::BlockPos;
-use temper_entities::components::{Baby, EntityMetadata};
 use temper_entities::PhysicalRegistry;
+use temper_entities::components::{Baby, EntityMetadata};
 use temper_state::GlobalStateResource;
 
 use crate::astar::{AStarSearch, SearchStep};
@@ -112,8 +112,8 @@ mod tests {
     use temper_core::block_state_id::BlockStateId;
     use temper_core::pos::{BlockPos, ChunkPos};
     use temper_data::generated::entities::EntityType as VanillaEntityType;
-    use temper_entities::components::EntityMetadata;
     use temper_entities::PhysicalRegistry;
+    use temper_entities::components::EntityMetadata;
     use temper_macros::block;
     use temper_state::create_test_state;
     use temper_world::Dimension;
