@@ -308,7 +308,10 @@ crate::define_standard_mob_save_load!(
     runtime_components = (
         temper_entities::markers::HasGravity,
         temper_entities::markers::HasCollisions,
-        temper_entities::markers::HasWaterDrag
+        temper_entities::markers::HasWaterDrag,
+        crate::pig::PigAI::default(),
+        pathfinding::Pathfinder::default(),
+        pathfinding::PathfinderSearch::default()
     )
 );
 
