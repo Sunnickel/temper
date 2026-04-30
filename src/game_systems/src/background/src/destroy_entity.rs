@@ -12,7 +12,6 @@ use temper_state::GlobalStateResource;
 use temper_text::{Color, NamedColor, TextComponentBuilder};
 use tracing::trace;
 
-#[expect(clippy::type_complexity)]
 pub fn destroy_entity_system(
     mut commands: Commands,
     mut destroy_entity_events: MessageReader<DestroyEntity>,

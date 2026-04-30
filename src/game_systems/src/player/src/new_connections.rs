@@ -81,6 +81,7 @@ pub fn accept_new_connections(
             },
             player_marker: PlayerMarker,
             entity_tracker: EntityTracker::default(),
+            permissions: new_connection.permissions,
         };
 
         // --- 3. Spawn the PlayerBundle, then .insert() the network components ---

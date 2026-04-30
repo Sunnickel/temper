@@ -25,6 +25,10 @@ temper-commands = { workspace = true }
 crossbeam-queue = { workspace = true }
 temper-world = { workspace = true }
 temper-nbt = { workspace = true }
+temper-permissions = { workspace = true }
 
 [dev-dependencies]
 temper-encryption = { workspace = true }
+
+[lints]
+workspace = true

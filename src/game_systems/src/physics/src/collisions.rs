@@ -47,27 +47,27 @@ pub fn handle(
             // feet position and catch floors crossed during that velocity step.
             if vel.vec.y < 0.0 {
                 let old_pos = pos.coords - vel.as_dvec3();
-                let feet_y = physical.bounding_box.min.y as f64 + pos.coords.y;
-                let old_feet_y = physical.bounding_box.min.y as f64 + old_pos.y;
+                let feet_y = f64::from(physical.bounding_box.min.y) + pos.coords.y;
+                let old_feet_y = f64::from(physical.bounding_box.min.y) + old_pos.y;
 
-                let min_x = (physical.bounding_box.min.x as f64 + pos.coords.x)
-                    .min(physical.bounding_box.min.x as f64 + old_pos.x)
+                let min_x = (f64::from(physical.bounding_box.min.x) + pos.coords.x)
+                    .min(f64::from(physical.bounding_box.min.x) + old_pos.x)
                     .floor() as i32;
-                let max_x = (physical.bounding_box.max.x as f64 + pos.coords.x)
-                    .max(physical.bounding_box.max.x as f64 + old_pos.x)
+                let max_x = (f64::from(physical.bounding_box.max.x) + pos.coords.x)
+                    .max(f64::from(physical.bounding_box.max.x) + old_pos.x)
                     .floor() as i32;
-                let min_z = (physical.bounding_box.min.z as f64 + pos.coords.z)
-                    .min(physical.bounding_box.min.z as f64 + old_pos.z)
+                let min_z = (f64::from(physical.bounding_box.min.z) + pos.coords.z)
+                    .min(f64::from(physical.bounding_box.min.z) + old_pos.z)
                     .floor() as i32;
-                let max_z = (physical.bounding_box.max.z as f64 + pos.coords.z)
-                    .max(physical.bounding_box.max.z as f64 + old_pos.z)
+                let max_z = (f64::from(physical.bounding_box.max.z) + pos.coords.z)
+                    .max(f64::from(physical.bounding_box.max.z) + old_pos.z)
                     .floor() as i32;
 
                 let min_y = feet_y.floor() as i32;
                 let max_y = old_feet_y.ceil() as i32 - 1;
 
                 'floor_crossing: for y in (min_y..=max_y).rev() {
-                    let surface_y = (y + 1) as f64;
+                    let surface_y = f64::from(y + 1);
                     if old_feet_y < surface_y || feet_y > surface_y {
                         continue;
                     }
@@ -75,7 +75,7 @@ pub fn handle(
                     for x in min_x..=max_x {
                         for z in min_z..=max_z {
                             if is_solid_block(&state.0, IVec3::new(x, y, z)) {
-                                pos.coords.y = surface_y - physical.bounding_box.min.y as f64;
+                                pos.coords.y = surface_y - f64::from(physical.bounding_box.min.y);
                                 vel.vec.y = 0.0;
                                 grounded.0 = true;
                                 break 'floor_crossing;
@@ -160,11 +160,11 @@ pub fn handle(
 
                     if mx <= my && mx <= mz {
                         let push = if ox_pos < ox_neg { -ox_pos } else { ox_neg };
-                        pos.coords.x += push as f64;
+                        pos.coords.x += f64::from(push);
                         vel.vec.x = 0.0;
                     } else if my <= mx && my <= mz {
                         let push = if oy_pos < oy_neg { -oy_pos } else { oy_neg };
-                        pos.coords.y += push as f64;
+                        pos.coords.y += f64::from(push);
                         vel.vec.y = 0.0;
                         if oy_neg <= oy_pos {
                             // Entity came from above: it's landing on the block
@@ -172,7 +172,7 @@ pub fn handle(
                         }
                     } else {
                         let push = if oz_pos < oz_neg { -oz_pos } else { oz_neg };
-                        pos.coords.z += push as f64;
+                        pos.coords.z += f64::from(push);
                         vel.vec.z = 0.0;
                     }
                 }
@@ -184,14 +184,14 @@ pub fn handle(
             // is excluded, no collision fires, and grounded stays false. We check the
             // block just below the entity's feet explicitly.
             if !grounded.0 && vel.vec.y <= 0.0 {
-                let feet_y = physical.bounding_box.min.y as f64 + pos.coords.y;
+                let feet_y = f64::from(physical.bounding_box.min.y) + pos.coords.y;
                 let floor_block_y = (feet_y - 1e-3).floor() as i32;
                 let cx = pos.coords.x.floor() as i32;
                 let cz = pos.coords.z.floor() as i32;
                 if is_solid_block(&state.0, IVec3::new(cx, floor_block_y, cz)) {
-                    let surface_y = (floor_block_y + 1) as f64;
+                    let surface_y = f64::from(floor_block_y + 1);
                     if (feet_y - surface_y).abs() < 0.05 {
-                        pos.coords.y = surface_y - physical.bounding_box.min.y as f64;
+                        pos.coords.y = surface_y - f64::from(physical.bounding_box.min.y);
                         vel.vec.y = 0.0;
                         grounded.0 = true;
                     }

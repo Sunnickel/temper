@@ -43,3 +43,6 @@ reqwest = { workspace = true }
 
 [features]
 dashboard = ["dep:temper-dashboard"]
+
+[lints]
+workspace = true

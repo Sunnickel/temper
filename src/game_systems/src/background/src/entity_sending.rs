@@ -61,14 +61,14 @@ pub fn send_new_entities(
                 let render_distance = client_info
                     .view_distance
                     .min(get_global_config().chunk_render_distance as u8);
-                if player_pos.distance(**entity_pos) > (render_distance as f64 * 16.0) {
+                if player_pos.distance(**entity_pos) > (f64::from(render_distance) * 16.0) {
                     continue; // Skip entities outside of render distance
                 }
 
                 let entity_type_id = if is_player {
                     PLAYER_TYPE_ID
                 } else {
-                    entity_type_id as i32
+                    i32::from(entity_type_id)
                 };
 
                 let packet = SpawnEntityPacket::new(

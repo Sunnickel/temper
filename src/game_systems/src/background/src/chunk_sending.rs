@@ -110,7 +110,7 @@ pub fn handle(
                 );
                 let distance = chunk_pos.distance_squared(player_chunk_pos);
                 let view_distance = max(
-                    client_info.view_distance as u32,
+                    u32::from(client_info.view_distance),
                     get_global_config().chunk_render_distance,
                 );
                 distance <= (view_distance * view_distance) as i32

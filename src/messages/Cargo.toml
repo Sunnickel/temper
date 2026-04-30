@@ -15,3 +15,6 @@ temper-inventories = { workspace = true }
 temper-particles = { workspace = true }
 temper-commands = { workspace = true }
 temper-entities = { workspace = true }
+
+[lints]
+workspace = true

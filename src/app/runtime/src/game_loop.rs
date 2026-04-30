@@ -13,6 +13,7 @@ use bevy_ecs::prelude::World;
 use bevy_ecs::schedule::Schedule;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
 use temper_config::server_config::get_global_config;
 use temper_game_systems::{LanPinger, register_schedules};
@@ -121,10 +122,7 @@ pub fn start_game_loop(global_state: GlobalState, no_tui: bool) -> Result<(), Bi
     let tick_zero = Instant::now();
 
     // Main loop - runs until shutdown flag is set (e.g., via Ctrl+C or /stop command)
-    while !global_state
-        .shut_down
-        .load(std::sync::atomic::Ordering::Relaxed)
-    {
+    while !global_state.shut_down.load(Relaxed) {
         let tick_start = Instant::now();
         let mut ran_any = false;
         let mut ran_count = 0;
@@ -240,13 +238,13 @@ pub fn start_game_loop(global_state: GlobalState, no_tui: bool) -> Result<(), Bi
 /// The 1.5 second interval is a balance between:
 /// - Fast enough for clients to discover the server quickly
 /// - Slow enough to not spam the network with unnecessary traffic
-async fn spawn_lan_pinger() {
+async fn spawn_lan_pinger(state: GlobalState) {
     let Ok(mut pinger) = LanPinger::new().await else {
         error!("Failed creating LAN pinger");
         return;
     };
 
-    loop {
+    while !state.shut_down.load(Relaxed) {
         pinger.send().await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
     }
@@ -290,7 +288,7 @@ fn tcp_conn_acceptor(
                 .build()?;
 
             // Spawn LAN broadcast pinger (for local network server discovery)
-            async_runtime.spawn(spawn_lan_pinger());
+            async_runtime.spawn(spawn_lan_pinger(state.clone()));
 
             if get_global_config().block_scanner_ips {
                 async_runtime.spawn(blocklist(state.clone()));
@@ -309,7 +307,7 @@ fn tcp_conn_acceptor(
                     };
 
                     // Accept connections until shutdown is signaled
-                    while !state.shut_down.load(std::sync::atomic::Ordering::Relaxed) {
+                    while !state.shut_down.load(Relaxed) {
                         // Use tokio::select! to handle both new connections AND shutdown signal
                         tokio::select! {
                             // Branch 1: New TCP connection incoming
@@ -368,7 +366,7 @@ fn tcp_conn_acceptor(
             // Set shutdown flag so the main loop knows something went wrong
             state
                 .shut_down
-                .store(true, std::sync::atomic::Ordering::Relaxed);
+                .store(true, Relaxed);
             return Err::<(), BinaryError>(BinaryError::Custom(
                 "TCP connection acceptor thread panicked".to_string(),
             ));
