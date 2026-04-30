@@ -32,14 +32,10 @@ pub struct MobLoadSystems;
 pub struct MobSaveSystems;
 
 pub fn register_tick_systems(schedule: &mut Schedule) {
-    schedule.add_systems(pig::init_pig);
-    schedule.add_systems(
-        bevy_ecs::prelude::ApplyDeferred
-            .after(pig::init_pig)
-            .before(pathfinding::tick_pathfinder),
-    );
     schedule.add_systems(
         (
+            pig::init_pig,
+            bevy_ecs::prelude::ApplyDeferred,
             pathfinding::tick_pathfinder,
             pig::tick_pig,
             pig::tick_pig_particles,
