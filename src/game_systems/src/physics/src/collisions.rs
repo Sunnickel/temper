@@ -42,6 +42,49 @@ pub fn handle(
             // When the entity jumps or falls, vel/pos change → grounded resets to false here,
             // then gets set back to true only when the MTV Y-resolution detects a landing.
             grounded.0 = false;
+
+            // Velocity has already been applied before collisions run, so recover the previous
+            // feet position and catch floors crossed during that velocity step.
+            if vel.vec.y < 0.0 {
+                let old_pos = pos.coords - vel.as_dvec3();
+                let feet_y = physical.bounding_box.min.y as f64 + pos.coords.y;
+                let old_feet_y = physical.bounding_box.min.y as f64 + old_pos.y;
+
+                let min_x = (physical.bounding_box.min.x as f64 + pos.coords.x)
+                    .min(physical.bounding_box.min.x as f64 + old_pos.x)
+                    .floor() as i32;
+                let max_x = (physical.bounding_box.max.x as f64 + pos.coords.x)
+                    .max(physical.bounding_box.max.x as f64 + old_pos.x)
+                    .floor() as i32;
+                let min_z = (physical.bounding_box.min.z as f64 + pos.coords.z)
+                    .min(physical.bounding_box.min.z as f64 + old_pos.z)
+                    .floor() as i32;
+                let max_z = (physical.bounding_box.max.z as f64 + pos.coords.z)
+                    .max(physical.bounding_box.max.z as f64 + old_pos.z)
+                    .floor() as i32;
+
+                let min_y = feet_y.floor() as i32;
+                let max_y = old_feet_y.ceil() as i32 - 1;
+
+                'floor_crossing: for y in (min_y..=max_y).rev() {
+                    let surface_y = (y + 1) as f64;
+                    if old_feet_y < surface_y || feet_y > surface_y {
+                        continue;
+                    }
+
+                    for x in min_x..=max_x {
+                        for z in min_z..=max_z {
+                            if is_solid_block(&state.0, IVec3::new(x, y, z)) {
+                                pos.coords.y = surface_y - physical.bounding_box.min.y as f64;
+                                vel.vec.y = 0.0;
+                                grounded.0 = true;
+                                break 'floor_crossing;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Figure out where the entity is going to be next tick
             let next_pos = pos.coords.as_vec3a() + **vel;
             let mut collided = false;
