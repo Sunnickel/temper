@@ -2,8 +2,8 @@ use bevy_ecs::prelude::*;
 use temper_components::pathfinder::Pathfinder;
 use temper_components::player::position::Position;
 use temper_core::pos::BlockPos;
-use temper_entities::PhysicalRegistry;
 use temper_entities::components::{Baby, EntityMetadata};
+use temper_entities::PhysicalRegistry;
 use temper_state::GlobalStateResource;
 
 use crate::astar::{AStarSearch, SearchStep};
@@ -112,8 +112,8 @@ mod tests {
     use temper_core::block_state_id::BlockStateId;
     use temper_core::pos::{BlockPos, ChunkPos};
     use temper_data::generated::entities::EntityType as VanillaEntityType;
-    use temper_entities::PhysicalRegistry;
     use temper_entities::components::EntityMetadata;
+    use temper_entities::PhysicalRegistry;
     use temper_macros::block;
     use temper_state::create_test_state;
     use temper_world::Dimension;
@@ -129,20 +129,21 @@ mod tests {
             let (state, temp_dir) = create_test_state();
 
             let chunk_pos = ChunkPos::new(0, 0);
-            let mut chunk = state
-                .0
-                .world
-                .get_or_generate_mut(chunk_pos, Dimension::Overworld)
-                .unwrap();
-            for x in 0u8..16 {
-                for z in 0u8..16 {
-                    chunk.set_block(
-                        BlockPos::of(i32::from(x), 64, i32::from(z)).chunk_block_pos(),
-                        block!("stone"),
-                    );
+            {
+                let mut chunk = state
+                    .0
+                    .world
+                    .get_or_generate_mut(chunk_pos, Dimension::Overworld)
+                    .unwrap();
+                for x in 0u8..16 {
+                    for z in 0u8..16 {
+                        chunk.set_block(
+                            BlockPos::of(i32::from(x), 64, i32::from(z)).chunk_block_pos(),
+                            block!("stone"),
+                        );
+                    }
                 }
             }
-            drop(chunk);
 
             let mut ecs = World::new();
             ecs.insert_resource(state);
