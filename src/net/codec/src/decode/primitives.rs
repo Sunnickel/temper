@@ -184,3 +184,9 @@ mod tests {
         assert_eq!(decoded, value);
     }
 }
+
+impl NetDecode for () {
+    fn decode<R: Read>(_: &mut R, _: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+        Ok(())
+    }
+}

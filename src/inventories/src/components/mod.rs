@@ -1,3 +1,6 @@
+pub mod potion_effect;
+mod consume_effects;
+
 use crate::slot::InventorySlot;
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::network_position::NetworkPosition;
