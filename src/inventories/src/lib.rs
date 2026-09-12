@@ -5,6 +5,7 @@ pub mod hotbar;
 pub mod inventory;
 pub mod item;
 pub mod slot;
+pub mod component;
 
 use crate::slot::InventorySlot;
 use bevy_ecs::prelude::Entity;
