@@ -1,12 +1,17 @@
 pub mod potion_effect;
-mod consume_effects;
+pub mod consume_effects;
+
+pub use consume_effects::ConsumeEffect;
+pub use potion_effect::PotionEffect;
 
 use crate::slot::InventorySlot;
+use temper_codec::net_types::id_or_inline::IdOr;
+use temper_codec::net_types::id_set::IDSet;
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::network_position::NetworkPosition;
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;
-use temper_macros::Discriminant;
+use temper_macros::{Discriminant, NetDecode, NetEncode};
 use temper_nbt::blob::NbtBlob;
 use temper_text::TextComponent;
 
@@ -47,8 +52,7 @@ pub enum ItemComponent {
     MinimumAttackCharge(f32),
     DamageType(VarInt),
 
-    // not implemented
-    DamageResistant,
+    DamageResistant(IDSet),
 
     AttackRange(AttackRange),
 
@@ -59,14 +63,12 @@ pub enum ItemComponent {
 
     Equippable(Equippable),
 
-    // not implemented
-    Repairable,
+    Repairable(IDSet),
 
     Glider,
     TooltipStyle(String),
 
-    // not implemented
-    DeathProtection,
+    DeathProtection(LengthPrefixedVec<ConsumeEffect>),
 
     BlocksAttacks(BlocksAttacks),
 
@@ -113,8 +115,7 @@ pub enum ItemComponent {
     // not implemented
     JukeboxPlayable,
 
-    // not implemented
-    ProvidesBannerPatterns,
+    ProvidesBannerPatterns(IDSet),
 
     Recipes(NbtBlob),
     LodestoneTracker(LodestoneTracker),
@@ -139,8 +140,7 @@ pub enum ItemComponent {
     Lock(NbtBlob),
     ContainerLoot(NbtBlob),
 
-    // not implemented
-    BreakSound,
+    BreakSound(IdOr<SoundEvent>),
 
     SulfurCubeContent(Box<InventorySlot>),
     VillagerVariant(VarInt),
@@ -240,8 +240,9 @@ pub struct Food {
 pub struct Consumable {
     pub consume_seconds: f32,
     pub animation: ConsumeAnimation,
+    pub sound: IdOr<SoundEvent>,
     pub has_consume_particles: bool,
-    // not implemented
+    pub effects: LengthPrefixedVec<ConsumeEffect>,
 }
 
 #[derive(Discriminant)]
@@ -284,21 +285,29 @@ pub struct Weapon {
 }
 
 pub struct Tool {
+    pub rules: LengthPrefixedVec<ToolRule>,
     pub default_mining_speed: f32,
     pub damage_per_block: VarInt,
     pub can_destroy_blocks_in_creative: bool,
-    // not implemented
+}
+
+pub struct ToolRule {
+    pub blocks: IDSet,
+    pub speed: PrefixedOptional<f32>,
+    pub correct_drop_for_blocks: PrefixedOptional<bool>,
 }
 
 pub struct Equippable {
     pub slot: EquippableSlot,
+    pub equip_sound: IdOr<SoundEvent>,
     pub model: PrefixedOptional<String>,
     pub camera_overlay: PrefixedOptional<String>,
+    pub allowed_entities: PrefixedOptional<IDSet>,
     pub dispensable: bool,
     pub swappable: bool,
     pub damage_on_hurt: bool,
     pub can_be_sheared: bool,
-    // not implemented
+    pub shearing_sound: IdOr<SoundEvent>,
 }
 
 #[derive(Discriminant)]
@@ -315,10 +324,20 @@ pub enum EquippableSlot {
 pub struct BlocksAttacks {
     pub block_delay_seconds: f32,
     pub disable_cooldown_scale: f32,
+    pub damage_reductions: LengthPrefixedVec<DamageReduction>,
     pub item_damage_threshold: f32,
     pub item_damage_base: f32,
     pub item_damage_factor: f32,
-    // not implemented
+    pub bypassed_by: PrefixedOptional<IDSet>,
+    pub block_sound: PrefixedOptional<IdOr<SoundEvent>>,
+    pub disable_sound: PrefixedOptional<IdOr<SoundEvent>>,
+}
+
+pub struct DamageReduction {
+    pub horizontal_blocking_angle: f32,
+    pub r#type: PrefixedOptional<IDSet>,
+    pub base: f32,
+    pub factor: f32,
 }
 
 #[derive(Discriminant)]
@@ -335,8 +354,8 @@ pub struct SuspiciousStewEffect {
 pub struct PotionContents {
     pub potion_id: PrefixedOptional<VarInt>,
     pub custom_color: PrefixedOptional<i32>,
+    pub custom_effects: LengthPrefixedVec<PotionEffect>,
     pub custom_name: PrefixedOptional<String>,
-    // not implemented
 }
 
 pub struct WritableBookPage {
@@ -371,7 +390,8 @@ pub struct BlockEntityData {
 pub struct PiercingWeapon {
     pub deals_knockback: bool,
     pub dismounts: bool,
-    // not implemented
+    pub sound: PrefixedOptional<SoundEvent>,
+    pub hit_sound: PrefixedOptional<SoundEvent>,
 }
 
 pub struct KineticWeapon {
@@ -379,7 +399,9 @@ pub struct KineticWeapon {
     pub delay_ticks: VarInt,
     pub forward_movement: f32,
     pub damage_multiplier: f32,
-    // not implemented
+    pub sound: PrefixedOptional<SoundEvent>,
+    pub hit_sound: PrefixedOptional<SoundEvent>,
+    // Kinetic weapon conditions aren't added yet.
 }
 
 pub struct SwingAnimation {
@@ -424,6 +446,12 @@ pub struct LodestoneTracker {
 pub struct Fireworks {
     pub flight_duration: VarInt,
     // not implemented
+}
+
+#[derive(NetEncode, NetDecode)]
+pub struct SoundEvent {
+    pub sound_id: String,
+    pub fixed_range: PrefixedOptional<f32>,
 }
 
 pub struct BlockStateProperty {

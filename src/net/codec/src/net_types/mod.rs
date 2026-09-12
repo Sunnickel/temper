@@ -9,7 +9,7 @@ pub mod network_position;
 pub mod prefixed_optional;
 pub mod teleport_flags;
 pub mod var_int;
-mod id_set;
+pub mod id_set;
 
 #[derive(Debug, thiserror::Error)]
 pub enum NetTypesError {
