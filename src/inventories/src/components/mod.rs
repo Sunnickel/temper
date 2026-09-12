@@ -1,10 +1,24 @@
+pub mod banner_pattern;
 pub mod block_predicate;
-pub mod potion_effect;
 pub mod consume_effects;
+pub mod firework;
+pub mod instrument;
+pub mod jukebox;
+pub mod kinetic_weapon;
+pub mod painting_variant;
+pub mod potion_effect;
+pub mod trim;
 
+pub use banner_pattern::{BannerPattern, BannerPatternLayer};
 pub use block_predicate::BlockPredicate;
 pub use consume_effects::ConsumeEffect;
+pub use firework::{FireworkExplosion, FireworkExplosionShape, Fireworks};
+pub use instrument::Instrument;
+pub use jukebox::JukeboxSong;
+pub use kinetic_weapon::{KineticWeapon, KineticWeaponConditions};
+pub use painting_variant::PaintingVariant;
 pub use potion_effect::PotionEffect;
+pub use trim::{Trim, TrimMaterial, TrimMaterialOverride, TrimPattern};
 
 use crate::slot::InventorySlot;
 use temper_codec::net_types::id_or_inline::IdOr;
@@ -370,43 +384,6 @@ pub struct WrittenBookPage {
     pub filtered_content: PrefixedOptional<TextComponent>,
 }
 
-pub struct Trim {
-    pub material: IdOr<TrimMaterial>,
-    pub pattern: IdOr<TrimPattern>,
-}
-
-pub struct TrimMaterial {
-    pub suffix: String,
-    pub overrides: LengthPrefixedVec<TrimMaterialOverride>,
-    pub description: TextComponent,
-}
-
-pub struct TrimMaterialOverride {
-    pub armor_material_type: String,
-    pub overridden_asset_name: String,
-}
-
-pub struct TrimPattern {
-    pub asset_name: String,
-    pub template_item: VarInt,
-    pub description: TextComponent,
-    pub decal: bool,
-}
-
-pub struct Instrument {
-    pub sound_event: IdOr<SoundEvent>,
-    pub use_duration: f32,
-    pub range: f32,
-    pub description: TextComponent,
-}
-
-pub struct JukeboxSong {
-    pub sound_event: IdOr<SoundEvent>,
-    pub description: TextComponent,
-    pub duration: f32,
-    pub output: VarInt,
-}
-
 pub struct EntityData {
     pub entity_type: VarInt,
     pub data: NbtBlob,
@@ -422,24 +399,6 @@ pub struct PiercingWeapon {
     pub dismounts: bool,
     pub sound: PrefixedOptional<SoundEvent>,
     pub hit_sound: PrefixedOptional<SoundEvent>,
-}
-
-pub struct KineticWeapon {
-    pub contact_cooldown_ticks: VarInt,
-    pub delay_ticks: VarInt,
-    pub dismount_conditions: PrefixedOptional<KineticWeaponConditions>,
-    pub knockback_conditions: PrefixedOptional<KineticWeaponConditions>,
-    pub damage_conditions: PrefixedOptional<KineticWeaponConditions>,
-    pub forward_movement: f32,
-    pub damage_multiplier: f32,
-    pub sound: PrefixedOptional<SoundEvent>,
-    pub hit_sound: PrefixedOptional<SoundEvent>,
-}
-
-pub struct KineticWeaponConditions {
-    pub max_duration_ticks: VarInt,
-    pub min_speed: f32,
-    pub min_relative_speed: f32,
 }
 
 pub struct SwingAnimation {
@@ -474,43 +433,11 @@ pub enum DyeColor {
     Black,
 }
 
-pub struct BannerPatternLayer {
-    pub pattern_type: IdOr<BannerPattern>,
-    pub color: DyeColor,
-}
-
-pub struct BannerPattern {
-    pub asset_id: String,
-    pub translation_key: String,
-}
-
 pub struct LodestoneTracker {
     pub has_global_position: bool,
     pub dimension: Option<String>,
     pub position: Option<NetworkPosition>,
     pub tracked: bool,
-}
-
-pub struct Fireworks {
-    pub flight_duration: VarInt,
-    pub explosions: LengthPrefixedVec<FireworkExplosion>,
-}
-
-pub struct FireworkExplosion {
-    pub shape: FireworkExplosionShape,
-    pub colors: LengthPrefixedVec<i32>,
-    pub fade_colors: LengthPrefixedVec<i32>,
-    pub has_trail: bool,
-    pub has_twinkle: bool,
-}
-
-#[derive(Discriminant)]
-pub enum FireworkExplosionShape {
-    SmallBall,
-    LargeBall,
-    Star,
-    Creeper,
-    Burst,
 }
 
 #[derive(NetEncode, NetDecode)]
@@ -529,10 +456,4 @@ pub struct Bee {
     pub entity_data: NbtBlob,
     pub ticks_in_hive: VarInt,
     pub min_ticks_in_hive: VarInt,
-}
-
-pub struct PaintingVariant {
-    pub width: i32,
-    pub height: i32,
-    pub asset_id: String,
 }
