@@ -17,6 +17,9 @@ temper-data = { workspace = true }
 temper-core = { workspace = true }
 tracing = { workspace = true }
 type_hash = { workspace = true }
+temper-nbt = { workspace = true }
+temper-text = { workspace = true }
+temper-macros = { workspace = true }
 
 [lints]
 workspace = true
