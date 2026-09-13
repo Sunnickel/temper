@@ -1,15 +1,17 @@
 use super::ItemComponent;
-use std::io::Write;
+use std::io::{Read, Write};
+use temper_codec::decode::errors::NetDecodeError;
+use temper_codec::decode::{NetDecode, NetDecodeOpts};
 use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::id_set::IDSet;
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;
-use temper_macros::{Discriminant, NetEncode};
+use temper_macros::{Discriminant, NetDecode, NetEncode};
 use temper_nbt::blob::NbtBlob;
 
-#[derive(NetEncode)]
+#[derive(NetEncode, NetDecode)]
 pub struct BlockPredicate {
     pub blocks: PrefixedOptional<IDSet>,
     pub properties: PrefixedOptional<LengthPrefixedVec<BlockPredicateProperty>>,
@@ -18,7 +20,7 @@ pub struct BlockPredicate {
     pub partial_data_component_predicates: LengthPrefixedVec<PartialDataComponentMatcher>,
 }
 
-#[derive(NetEncode)]
+#[derive(NetEncode, NetDecode)]
 pub struct BlockPredicateProperty {
     pub name: String,
     pub matcher: BlockPredicatePropertyMatcher,
@@ -42,7 +44,7 @@ impl NetEncode for ExactDataComponentMatcher {
     }
 }
 
-#[derive(NetEncode)]
+#[derive(NetEncode, NetDecode)]
 pub struct PartialDataComponentMatcher {
     pub predicate_type: PartialDataComponentPredicateType,
     pub predicate: NbtBlob,
@@ -78,15 +80,79 @@ impl NetEncode for BlockPredicatePropertyMatcher {
                 max_value,
             } => {
                 false.encode(writer, &NetEncodeOpts::None)?;
-                min_value.encode(writer, &NetEncodeOpts::None)?;
-                max_value.encode(writer, &NetEncodeOpts::None)
+                encode_optional_string(min_value, writer)?;
+                encode_optional_string(max_value, writer)
             }
         }
+    }
+}
+
+impl NetDecode for BlockPredicatePropertyMatcher {
+    fn decode<R: Read>(reader: &mut R, _opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+        if bool::decode(reader, &NetDecodeOpts::None)? {
+            return Ok(Self::Exact(String::decode(reader, &NetDecodeOpts::None)?));
+        }
+
+        Ok(Self::Range {
+            min_value: decode_optional_string(reader)?,
+            max_value: decode_optional_string(reader)?,
+        })
     }
 }
 
 impl NetEncode for PartialDataComponentPredicateType {
     fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
         VarInt::new(self.discriminant()).encode(writer, opts)
+    }
+}
+
+impl NetDecode for PartialDataComponentPredicateType {
+    fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+        match VarInt::decode(reader, opts)?.0 {
+            0 => Ok(Self::Damage),
+            1 => Ok(Self::Enchantments),
+            2 => Ok(Self::StoredEnchantments),
+            3 => Ok(Self::PotionContents),
+            4 => Ok(Self::CustomData),
+            5 => Ok(Self::Container),
+            6 => Ok(Self::BundleContents),
+            7 => Ok(Self::FireworkExplosion),
+            8 => Ok(Self::Fireworks),
+            9 => Ok(Self::WritableBookContent),
+            10 => Ok(Self::WrittenBookContent),
+            11 => Ok(Self::AttributeModifiers),
+            12 => Ok(Self::Trim),
+            13 => Ok(Self::JukeboxPlayable),
+            _ => Err(NetDecodeError::InvalidEnumVariant),
+        }
+    }
+}
+
+impl NetDecode for ExactDataComponentMatcher {
+    fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+        Ok(Self {
+            component: Box::new(ItemComponent::decode(reader, opts)?),
+        })
+    }
+}
+
+fn encode_optional_string<W: Write>(
+    value: &Option<String>,
+    writer: &mut W,
+) -> Result<(), NetEncodeError> {
+    match value {
+        Some(value) => {
+            true.encode(writer, &NetEncodeOpts::None)?;
+            value.encode(writer, &NetEncodeOpts::None)
+        }
+        None => false.encode(writer, &NetEncodeOpts::None),
+    }
+}
+
+fn decode_optional_string<R: Read>(reader: &mut R) -> Result<Option<String>, NetDecodeError> {
+    if bool::decode(reader, &NetDecodeOpts::None)? {
+        Ok(Some(String::decode(reader, &NetDecodeOpts::None)?))
+    } else {
+        Ok(None)
     }
 }

@@ -1,7 +1,9 @@
+use crate::decode::errors::NetDecodeError;
+use crate::decode::{NetDecode, NetDecodeOpts};
 use crate::encode::errors::NetEncodeError;
 use crate::encode::{NetEncode, NetEncodeOpts};
 use crate::net_types::var_int::VarInt;
-use std::io::Write;
+use std::io::{Read, Write};
 
 pub enum IDSet {
     Indirect(String),
@@ -22,6 +24,27 @@ impl NetEncode for IDSet {
                 }
                 Ok(())
             }
+        }
+    }
+}
+
+impl NetDecode for IDSet {
+    fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+        let length = VarInt::decode(reader, opts)?.0;
+
+        match length {
+            0 => Ok(Self::Indirect(String::decode(reader, opts)?)),
+            1.. => {
+                let mut ids = Vec::with_capacity(length as usize + 1);
+                for _ in 0..=length {
+                    ids.push(VarInt::decode(reader, opts)?);
+                }
+
+                Ok(Self::Direct(ids))
+            }
+            _ => Err(NetDecodeError::ExternalError(
+                format!("invalid ID set length: {length}").into(),
+            )),
         }
     }
 }
