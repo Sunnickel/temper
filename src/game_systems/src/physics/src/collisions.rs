@@ -1,19 +1,27 @@
 use bevy_ecs::message::MessageWriter;
-use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
+use bevy_ecs::prelude::{DetectChanges, Entity, Has, Or, Query, Res, With};
 use bevy_ecs::world::Mut;
 use bevy_math::IVec3;
 use bevy_math::bounding::{Aabb3d, BoundingVolume};
+use bevy_math::ops::abs;
+use std::cmp::max;
+use tracing::info;
+use temper_components::bounds::CollisionBounds;
+use temper_components::health::Health;
 use temper_components::player::grounded::OnGround;
 use temper_components::player::position::Position;
 use temper_components::player::velocity::Velocity;
 use temper_core::block_properties;
 use temper_core::dimension::Dimension;
 use temper_core::pos::{ChunkBlockPos, ChunkPos};
+use temper_data::generated::attributes::Attribute;
 use temper_entities::PhysicalRegistry;
 use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
 use temper_entities::markers::HasCollisions;
+use temper_messages::damage::{DamageEvent, DamageSource};
 use temper_messages::entity_update::SendEntityUpdate;
+use temper_physics::{AIR_RESISTANCE, GRAVITY_ACCELERATION, TERMINAL_VELOCITY_Y};
 use temper_state::{GlobalState, GlobalStateResource};
 
 type CollisionQueryItem<'a> = (
@@ -23,15 +31,17 @@ type CollisionQueryItem<'a> = (
     &'a EntityMetadata,
     Has<Baby>,
     Mut<'a, OnGround>,
+    Option<Mut<'a, Health>>,
 );
 
 pub fn handle(
-    query: Query<CollisionQueryItem, With<HasCollisions>>,
+    query: Query<CollisionQueryItem, Or<(With<HasCollisions>, With<CollisionBounds>)>>,
     mut writer: MessageWriter<SendEntityUpdate>,
+    mut dmg_writer: MessageWriter<DamageEvent>,
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, mut vel, mut pos, metadata, is_baby, mut grounded) in query {
+    for (eid, mut vel, mut pos, metadata, is_baby, mut grounded, health) in query {
         let Some(physical) = registry.get_or_adult(metadata.protocol_id(), is_baby) else {
             continue;
         };
@@ -121,6 +131,7 @@ pub fn handle(
                     }
                 }
             }
+
             // Resolve collisions using Minimum Translation Vector (MTV):
             // compute the penetration depth on each axis and push out along the
             // smallest one, zeroing only that velocity component. This preserves
@@ -145,6 +156,40 @@ pub fn handle(
                 let oy_neg = block_max.y - entity_min.y; // entity entering from above
                 let oz_pos = entity_max.z - block_min.z; // entity entering from -Z
                 let oz_neg = block_max.z - entity_min.z; // entity entering from +Z
+
+                info!("Collided");
+
+                if oy_neg > 0.0 || oy_pos > 0.0 {
+                    info!("Entity fell");
+                    let y_vec = vel.vec.y;
+
+                    // Calculate the Fall Height based of the previous velocity
+                    let impact_speed = y_vec.abs();
+                    let fall_height = (impact_speed * impact_speed) / (2.0 * GRAVITY_ACCELERATION.y as f32);
+
+
+                    // Calculate the fall damage from the just calculated fall_height
+                    // and uses the entities Attributes.
+                    // IMPORTANT: Default Values are currently used, later: dynamically per entity
+                    let fall_dmg = max(
+                        0,
+                        ((fall_height - Attribute::SAFE_FALL_DISTANCE.default_value as f32)
+                            * Attribute::FALL_DAMAGE_MULTIPLIER.default_value as f32)
+                            as i32,
+                    );
+
+                    info!("Falldamage: {}", fall_dmg);
+
+                    let msg = DamageEvent {
+                        target: eid,
+                        source: DamageSource::Fall { last_ground: None },
+                        damage: fall_dmg as f32,
+                        knockback: None,
+                        knockback_source: None,
+                    };
+
+                    dmg_writer.write(msg);
+                }
 
                 // Only resolve if there is real penetration on all three axes
                 if ox_pos > 0.0
