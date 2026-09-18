@@ -20,7 +20,7 @@ pub use painting_variant::PaintingVariant;
 pub use potion_effect::PotionEffect;
 pub use trim::{Trim, TrimMaterial, TrimMaterialOverride, TrimPattern};
 
-use crate::slot::InventorySlot;
+use crate::slot::{InventorySlot, ItemStackTemplate};
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
@@ -98,7 +98,7 @@ pub enum ItemComponent {
 
     Consumable(Consumable),
 
-    UseRemainder(Box<InventorySlot>),
+    UseRemainder(Box<ItemStackTemplate>),
     UseCooldown(UseCooldown),
     UseEffects(UseEffects),
     MinimumAttackCharge(f32),
@@ -741,14 +741,6 @@ fn encode_component_value<W: Write>(
         ItemComponent::CatCollar(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::SheepColor(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::ShulkerColor(value) => value.encode(writer, &NetEncodeOpts::None),
-    }
-}
-
-impl ItemComponent {
-    pub fn encode_patch_entry<W: Write>(&self, writer: &mut W) -> Result<(), NetEncodeError> {
-        VarInt::new(self.protocol_id()).encode(writer, &NetEncodeOpts::None)?;
-        true.encode(writer, &NetEncodeOpts::None)?;
-        encode_component_value(self, writer)
     }
 }
 

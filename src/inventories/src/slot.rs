@@ -1,8 +1,8 @@
-use crate::components::{ItemComponent, decode_component_value};
+use crate::components::{decode_component_value, ItemComponent};
 use crate::item::ItemID;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
 use temper_codec::encode::errors::NetEncodeError;
@@ -20,6 +20,15 @@ pub struct InventorySlot {
     // https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypeHash)]
+pub struct ItemStackTemplate {
+    pub item_id: ItemID,
+    pub count: VarInt,
+    #[type_hash(skip)]
+    pub components_to_add: Option<Vec<ItemComponent>>,
+    pub components_to_remove: Option<Vec<VarInt>>,
+}
+
 impl InventorySlot {
     pub fn empty() -> Self {
         Self {
@@ -28,6 +37,64 @@ impl InventorySlot {
             components_to_add: None,
             components_to_remove: None,
         }
+    }
+
+    /// Creative mode does stuff slightly differently because of course it does
+    pub fn decode_with_delimited_components<R: Read>(
+        reader: &mut R,
+        opts: &NetDecodeOpts,
+    ) -> Result<Self, NetDecodeError> {
+        let count = VarInt::decode(reader, opts)?;
+        if count.0 <= 0 {
+            Ok(Self {
+                count,
+                ..Default::default()
+            })
+        } else {
+            let item_id = VarInt::decode(reader, opts)?;
+            let (components_to_add, components_to_remove) =
+                decode_data_component_patch(reader, opts, true)?;
+
+            Ok(Self {
+                count,
+                item_id: Some(ItemID(item_id)),
+                components_to_add: Some(components_to_add),
+                components_to_remove: Some(components_to_remove),
+            })
+        }
+    }
+}
+
+impl NetDecode for ItemStackTemplate {
+    fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+        let item_id = ItemID::decode(reader, opts)?;
+        let count = VarInt::decode(reader, opts)?;
+        let (components_to_add, components_to_remove) =
+            decode_data_component_patch(reader, opts, false)?;
+
+        Ok(Self {
+            item_id,
+            count,
+            components_to_add: Some(components_to_add),
+            components_to_remove: Some(components_to_remove),
+        })
+    }
+}
+
+impl NetEncode for ItemStackTemplate {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        self.item_id.encode(writer, opts)?;
+        self.count.encode(writer, opts)?;
+        encode_data_component_patch(
+            writer,
+            opts,
+            self.components_to_add.as_deref(),
+            self.components_to_remove.as_deref(),
+        )
     }
 }
 
@@ -44,32 +111,15 @@ impl Display for InventorySlot {
 impl NetDecode for InventorySlot {
     fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
         let count = VarInt::decode(reader, opts)?;
-        if count.0 == 0 {
+        if count.0 <= 0 {
             Ok(Self {
                 count,
                 ..Default::default()
             })
         } else {
             let item_id = VarInt::decode(reader, opts)?;
-            let component_patch_count = VarInt::decode(reader, opts)?;
-            if component_patch_count.0 < 0 {
-                return Err(NetDecodeError::ExternalError(
-                    format!("negative data component patch length: {}", component_patch_count.0)
-                        .into(),
-                ));
-            }
-
-            let mut components_to_add = Vec::with_capacity(component_patch_count.0 as usize);
-            let mut components_to_remove = Vec::new();
-
-            for _ in 0..component_patch_count.0 {
-                let component_id = VarInt::decode(reader, opts)?;
-                if bool::decode(reader, opts)? {
-                    components_to_add.push(decode_component_value(component_id.0, reader)?);
-                } else {
-                    components_to_remove.push(component_id);
-                }
-            }
+            let (components_to_add, components_to_remove) =
+                decode_data_component_patch(reader, opts, false)?;
 
             Ok(Self {
                 count,
@@ -86,8 +136,8 @@ impl NetEncode for InventorySlot {
         // 1. Always encode the count
         self.count.encode(writer, opts)?;
 
-        // If count is 0, stop immediately
-        if self.count.0 == 0 {
+        // If the slot is empty, stop immediately
+        if self.count.0 <= 0 {
             return Ok(());
         }
 
@@ -98,38 +148,132 @@ impl NetEncode for InventorySlot {
         }
 
         // 3. Encode the data component patch.
-        let add_count = self
-            .components_to_add
-            .as_ref()
-            .map_or(0, |components| components.len());
-        let remove_count = self
-            .components_to_remove
-            .as_ref()
-            .map_or(0, |components| components.len());
-
-        VarInt::new((add_count + remove_count) as i32).encode(writer, opts)?;
-
-        // 4. Added components carry a value.
-        if add_count > 0
-            && let Some(components) = &self.components_to_add
-        {
-            for component in components {
-                component.encode_patch_entry(writer)?;
-            }
-        }
-
-        // 5. Removed components are just the type id followed by a false value marker.
-        if remove_count > 0
-            && let Some(components) = &self.components_to_remove
-        {
-            for component in components {
-                component.encode(writer, opts)?;
-                false.encode(writer, opts)?;
-            }
-        }
-
-        Ok(())
+        encode_data_component_patch(
+            writer,
+            opts,
+            self.components_to_add.as_deref(),
+            self.components_to_remove.as_deref(),
+        )
     }
+}
+
+fn decode_data_component_patch<R: Read>(
+    reader: &mut R,
+    opts: &NetDecodeOpts,
+    delimited_values: bool,
+) -> Result<(Vec<ItemComponent>, Vec<VarInt>), NetDecodeError> {
+    let components_to_add_count = VarInt::decode(reader, opts)?;
+    if components_to_add_count.0 < 0 {
+        return Err(NetDecodeError::ExternalError(
+            format!(
+                "negative data component add count: {}",
+                components_to_add_count.0
+            )
+            .into(),
+        ));
+    }
+
+    let components_to_remove_count = VarInt::decode(reader, opts)?;
+    if components_to_remove_count.0 < 0 {
+        return Err(NetDecodeError::ExternalError(
+            format!(
+                "negative data component remove count: {}",
+                components_to_remove_count.0
+            )
+            .into(),
+        ));
+    }
+
+    let mut components_to_add = Vec::with_capacity(components_to_add_count.0 as usize);
+    for _ in 0..components_to_add_count.0 {
+        let component = if delimited_values {
+            decode_delimited_data_component(reader, opts)?
+        } else {
+            ItemComponent::decode(reader, opts)?
+        };
+        components_to_add.push(component);
+    }
+
+    let mut components_to_remove = Vec::with_capacity(components_to_remove_count.0 as usize);
+    for _ in 0..components_to_remove_count.0 {
+        components_to_remove.push(VarInt::decode(reader, opts)?);
+    }
+
+    Ok((components_to_add, components_to_remove))
+}
+
+fn decode_delimited_data_component<R: Read>(
+    reader: &mut R,
+    opts: &NetDecodeOpts,
+) -> Result<ItemComponent, NetDecodeError> {
+    let component_id = VarInt::decode(reader, opts)?;
+    let length = VarInt::decode(reader, opts)?.0;
+    if length < 0 {
+        return Err(NetDecodeError::ExternalError(
+            format!("negative data component value length: {length}").into(),
+        ));
+    }
+
+    let mut buf = vec![0; length as usize];
+    reader.read_exact(&mut buf)?;
+    let mut cursor = Cursor::new(buf);
+    let component = decode_component_value(component_id.0, &mut cursor)?;
+    let decoded_len = cursor.position();
+    let expected_len = cursor.get_ref().len() as u64;
+    if decoded_len != expected_len {
+        return Err(NetDecodeError::ExternalError(
+            format!(
+                "data component {} consumed {decoded_len} bytes from {expected_len} byte value",
+                component_id.0
+            )
+            .into(),
+        ));
+    }
+
+    Ok(component)
+}
+
+fn encode_data_component_patch<W: Write>(
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+    components_to_add: Option<&[ItemComponent]>,
+    components_to_remove: Option<&[VarInt]>,
+) -> Result<(), NetEncodeError> {
+    let add_count = components_to_add.map_or(0, <[ItemComponent]>::len);
+    let remove_count = components_to_remove.map_or(0, <[VarInt]>::len);
+
+    VarInt::new(add_count as i32).encode(writer, opts)?;
+    VarInt::new(remove_count as i32).encode(writer, opts)?;
+    encode_data_component_patch_entries(writer, opts, components_to_add)?;
+    encode_removed_data_component_entries(writer, opts, components_to_remove)
+}
+
+fn encode_data_component_patch_entries<W: Write>(
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+    components: Option<&[ItemComponent]>,
+) -> Result<(), NetEncodeError> {
+    if let Some(components) = components {
+        for component in components {
+            component.encode(writer, opts)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn encode_removed_data_component_entries<W: Write>(
+    writer: &mut W,
+    opts: &NetEncodeOpts,
+    components: Option<&[VarInt]>,
+) -> Result<(), NetEncodeError> {
+    if let Some(components) = components {
+        for component in components {
+            component.encode(writer, opts)?;
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
