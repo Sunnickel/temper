@@ -4,8 +4,10 @@ use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::id_or_inline::IdOr;
 use temper_codec::net_types::var_int::VarInt;
+use temper_macros::NetDecode;
 use temper_text::TextComponent;
 
+#[derive(NetDecode)]
 pub struct JukeboxSong {
     pub sound_event: IdOr<SoundEvent>,
     pub description: TextComponent,

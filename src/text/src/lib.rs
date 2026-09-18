@@ -7,6 +7,7 @@ mod tests;
 mod ansi;
 mod builders;
 mod r#impl;
+mod nbt;
 mod utils;
 
 pub use builders::*;

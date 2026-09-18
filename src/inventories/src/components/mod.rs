@@ -484,6 +484,7 @@ pub struct WritableBookPage {
     pub filtered_content: PrefixedOptional<String>,
 }
 
+#[derive(NetDecode)]
 pub struct WrittenBookContent {
     pub raw_title: String,
     pub filtered_title: PrefixedOptional<String>,
@@ -493,6 +494,7 @@ pub struct WrittenBookContent {
     pub resolved: bool,
 }
 
+#[derive(NetDecode)]
 pub struct WrittenBookPage {
     pub raw_content: TextComponent,
     pub filtered_content: PrefixedOptional<TextComponent>,
@@ -843,10 +845,10 @@ fn decode_component_body<R: Read>(reader: &mut R) -> Result<ItemComponent, NetDe
         2 => Ok(ItemComponent::MaxDamage(VarInt::decode(reader, &NetDecodeOpts::None)?)),
         3 => Ok(ItemComponent::Damage(VarInt::decode(reader, &NetDecodeOpts::None)?)),
         4 => Ok(ItemComponent::Unbreakable),
-        5 => unsupported_component("custom_name"),
-        6 => unsupported_component("item_name"),
+        5 => Ok(ItemComponent::CustomName(decode_box(reader)?)),
+        6 => Ok(ItemComponent::ItemName(decode_box(reader)?)),
         7 => Ok(ItemComponent::ItemModel(String::decode(reader, &NetDecodeOpts::None)?)),
-        8 => unsupported_component("lore"),
+        8 => Ok(ItemComponent::Lore(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
         9 => Ok(ItemComponent::Rarity(Rarity::decode(reader, &NetDecodeOpts::None)?)),
         10 => Ok(ItemComponent::Enchantments(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
         11 => Ok(ItemComponent::CanPlaceOn(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
@@ -888,30 +890,24 @@ fn decode_component_body<R: Read>(reader: &mut R) -> Result<ItemComponent, NetDe
         47 => Ok(ItemComponent::PotionDurationScale(f32::decode(reader, &NetDecodeOpts::None)?)),
         48 => Ok(ItemComponent::SuspiciousStewEffects(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
         49 => Ok(ItemComponent::WritableBookContent(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        50 => unsupported_component("written_book_content"),
+        50 => Ok(ItemComponent::WrittenBookContent(WrittenBookContent::decode(reader, &NetDecodeOpts::None)?)),
         51 => Ok(ItemComponent::Trim(Box::new(Trim {
-            material: decode_id_or_inline_unsupported::<TrimMaterial, _>(reader, "trim material")?,
-            pattern: decode_id_or_inline_unsupported::<TrimPattern, _>(reader, "trim pattern")?,
+            material: IdOr::decode(reader, &NetDecodeOpts::None)?,
+            pattern: IdOr::decode(reader, &NetDecodeOpts::None)?,
         }))),
         52 => Ok(ItemComponent::DebugStickState(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
         53 => Ok(ItemComponent::EntityData(EntityData::decode(reader, &NetDecodeOpts::None)?)),
         54 => Ok(ItemComponent::BucketEntityData(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
         55 => Ok(ItemComponent::BlockEntityData(BlockEntityData::decode(reader, &NetDecodeOpts::None)?)),
-        56 => Ok(ItemComponent::Instrument(
-            decode_id_or_inline_unsupported::<Instrument, _>(reader, "instrument")?,
-        )),
+        56 => Ok(ItemComponent::Instrument(IdOr::decode(reader, &NetDecodeOpts::None)?)),
         57 => Ok(ItemComponent::PiercingWeapon(PiercingWeapon::decode(reader, &NetDecodeOpts::None)?)),
         58 => Ok(ItemComponent::KineticWeapon(KineticWeapon::decode(reader, &NetDecodeOpts::None)?)),
         59 => Ok(ItemComponent::SwingAnimation(SwingAnimation::decode(reader, &NetDecodeOpts::None)?)),
         60 => Ok(ItemComponent::AdditionalTradeCost(VarInt::decode(reader, &NetDecodeOpts::None)?)),
         61 => Ok(ItemComponent::Dye(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        62 => Ok(ItemComponent::ProvidesTrimMaterial(
-            decode_id_or_inline_unsupported::<TrimMaterial, _>(reader, "trim material")?,
-        )),
+        62 => Ok(ItemComponent::ProvidesTrimMaterial(IdOr::decode(reader, &NetDecodeOpts::None)?)),
         63 => Ok(ItemComponent::OminousBottleAmplifier(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        64 => Ok(ItemComponent::JukeboxPlayable(
-            decode_id_or_inline_unsupported::<JukeboxSong, _>(reader, "jukebox song")?,
-        )),
+        64 => Ok(ItemComponent::JukeboxPlayable(IdOr::decode(reader, &NetDecodeOpts::None)?)),
         65 => Ok(ItemComponent::ProvidesBannerPatterns(IDSet::decode(reader, &NetDecodeOpts::None)?)),
         66 => Ok(ItemComponent::Recipes(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
         67 => Ok(ItemComponent::LodestoneTracker(LodestoneTracker::decode(reader, &NetDecodeOpts::None)?)),
@@ -968,22 +964,6 @@ where
     R: Read,
 {
     Ok(Box::new(T::decode(reader, &NetDecodeOpts::None)?))
-}
-
-fn decode_id_or_inline_unsupported<T, R>(
-    reader: &mut R,
-    type_name: &str,
-) -> Result<IdOr<T>, NetDecodeError>
-where
-    R: Read,
-{
-    match VarInt::decode(reader, &NetDecodeOpts::None)?.0 {
-        0 => Err(NetDecodeError::ExternalError(
-            format!("decoding inline {type_name} is not implemented yet").into(),
-        )),
-        id @ 1.. => Ok(IdOr::Id(VarInt::new(id - 1))),
-        _ => Err(NetDecodeError::InvalidEnumVariant),
-    }
 }
 
 fn unsupported_component<T>(component_name: &str) -> Result<T, NetDecodeError> {
