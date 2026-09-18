@@ -1,4 +1,4 @@
-use crate::components::ItemComponent;
+use crate::components::{ItemComponent, decode_component_value};
 use crate::item::ItemID;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -16,8 +16,7 @@ pub struct InventorySlot {
     pub item_id: Option<ItemID>,
     #[type_hash(skip)]
     pub components_to_add: Option<Vec<ItemComponent>>,
-    #[type_hash(skip)]
-    pub components_to_remove: Option<Vec<ItemComponent>>,
+    pub components_to_remove: Option<Vec<VarInt>>,
     // https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
 }
 
@@ -52,29 +51,31 @@ impl NetDecode for InventorySlot {
             })
         } else {
             let item_id = VarInt::decode(reader, opts)?;
-            let components_to_add_count = VarInt::decode(reader, opts)?;
-            let components_to_remove_count = VarInt::decode(reader, opts)?;
+            let component_patch_count = VarInt::decode(reader, opts)?;
+            if component_patch_count.0 < 0 {
+                return Err(NetDecodeError::ExternalError(
+                    format!("negative data component patch length: {}", component_patch_count.0)
+                        .into(),
+                ));
+            }
 
-            let components_to_add = {
-                let mut components = Vec::with_capacity(components_to_add_count.0 as usize);
-                for _ in 0..components_to_add_count.0 {
-                    components.push(ItemComponent::decode(reader, opts)?);
+            let mut components_to_add = Vec::with_capacity(component_patch_count.0 as usize);
+            let mut components_to_remove = Vec::new();
+
+            for _ in 0..component_patch_count.0 {
+                let component_id = VarInt::decode(reader, opts)?;
+                if bool::decode(reader, opts)? {
+                    components_to_add.push(decode_component_value(component_id.0, reader)?);
+                } else {
+                    components_to_remove.push(component_id);
                 }
-                Some(components)
-            };
-            let components_to_remove = {
-                let mut components = Vec::with_capacity(components_to_remove_count.0 as usize);
-                for _ in 0..components_to_remove_count.0 {
-                    components.push(ItemComponent::decode(reader, opts)?);
-                }
-                Some(components)
-            };
+            }
 
             Ok(Self {
                 count,
                 item_id: Some(ItemID(item_id)),
-                components_to_add,
-                components_to_remove,
+                components_to_add: Some(components_to_add),
+                components_to_remove: Some(components_to_remove),
             })
         }
     }
@@ -96,39 +97,34 @@ impl NetEncode for InventorySlot {
             None => VarInt::new(0).encode(writer, opts)?,
         }
 
-        // 3. Get add_count and remove_count
+        // 3. Encode the data component patch.
         let add_count = self
             .components_to_add
             .as_ref()
-            .map(|v| VarInt::from(v.len() as i32))
-            .unwrap_or_default();
+            .map_or(0, |components| components.len());
         let remove_count = self
             .components_to_remove
             .as_ref()
-            .map(|v| VarInt::from(v.len() as i32))
-            .unwrap_or_default();
+            .map_or(0, |components| components.len());
 
-        // 4. Encode components_to_add_count
-        add_count.encode(writer, opts)?;
+        VarInt::new((add_count + remove_count) as i32).encode(writer, opts)?;
 
-        // 5. Encode components_to_remove_count
-        remove_count.encode(writer, opts)?;
-
-        // 6. Encode components_to_add list (if any)
-        if add_count.0 > 0
+        // 4. Added components carry a value.
+        if add_count > 0
             && let Some(components) = &self.components_to_add
         {
             for component in components {
-                component.encode(writer, opts)?;
+                component.encode_patch_entry(writer)?;
             }
         }
 
-        // 7. Encode components_to_remove list (if any)
-        if remove_count.0 > 0
+        // 5. Removed components are just the type id followed by a false value marker.
+        if remove_count > 0
             && let Some(components) = &self.components_to_remove
         {
             for component in components {
                 component.encode(writer, opts)?;
+                false.encode(writer, opts)?;
             }
         }
 
@@ -192,10 +188,7 @@ mod tests {
                 ItemComponent::MaxStackSize(VarInt::new(10)),
                 ItemComponent::MaxDamage(VarInt::new(11)),
             ]),
-            components_to_remove: Some(vec![
-                ItemComponent::MaxStackSize(VarInt::new(20)),
-                ItemComponent::MaxDamage(VarInt::new(21)),
-            ]),
+            components_to_remove: Some(vec![VarInt::new(20), VarInt::new(21)]),
         };
         let decoded_complex = run_roundtrip_test(&complex_slot);
         assert_eq!(

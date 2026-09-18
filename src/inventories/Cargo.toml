@@ -2,6 +2,7 @@
 name = "temper-inventories"
 version = { workspace = true }
 edition = "2024"
+build = "build.rs"
 
 [dependencies]
 
@@ -21,6 +22,10 @@ type_hash = { workspace = true }
 temper-nbt = { workspace = true }
 temper-text = { workspace = true }
 temper-macros = { workspace = true }
+
+[build-dependencies]
+serde_json = { workspace = true }
+syn = { workspace = true }
 
 [lints]
 workspace = true
