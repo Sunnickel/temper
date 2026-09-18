@@ -5,13 +5,15 @@ use temper_codec::decode::{NetDecode, NetDecodeOpts};
 use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 
-/// A lump of NBT data as bytes. Useful for when you need to read 
-/// some nbt but don't actually care what's in there
+const INITIAL_BLOB_CAPACITY: usize = 256;
+
+/// A lump of NBT data as bytes. Useful for when you need to read
+/// some NBT but don't actually care what's in there.
 pub struct NbtBlob(pub Vec<u8>);
 
 impl NetDecode for NbtBlob {
     fn decode<R: Read>(reader: &mut R, _opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(INITIAL_BLOB_CAPACITY);
         let tag = read_tag(reader, &mut bytes)?;
         read_payload(reader, &mut bytes, tag)?;
 
@@ -50,11 +52,10 @@ fn read_payload<R: Read>(
         }
         NbtTag::List => {
             let el_type = read_tag(reader, bytes)?;
-            let len = read_i32(reader, bytes)?;
-            let len = checked_len(len, 1)?;
+            let len = checked_len(read_i32(reader, bytes)?, 1)?;
 
             for _ in 0..len {
-                read_payload(reader, bytes, el_type.clone())?;
+                read_payload(reader, bytes, el_type)?;
             }
         }
         NbtTag::Compound => loop {
@@ -85,25 +86,19 @@ fn read_string<R: Read>(reader: &mut R, bytes: &mut Vec<u8>) -> Result<(), NetDe
 }
 
 fn read_i32<R: Read>(reader: &mut R, bytes: &mut Vec<u8>) -> Result<i32, NetDecodeError> {
-    let start = bytes.len();
-    read_bytes(reader, bytes, size_of::<i32>())?;
+    let mut buf = [0; size_of::<i32>()];
+    reader.read_exact(&mut buf)?;
+    bytes.extend_from_slice(&buf);
 
-    Ok(i32::from_be_bytes(
-        bytes[start..]
-            .try_into()
-            .expect("read exactly enough bytes for an i32"),
-    ))
+    Ok(i32::from_be_bytes(buf))
 }
 
 fn read_u16<R: Read>(reader: &mut R, bytes: &mut Vec<u8>) -> Result<u16, NetDecodeError> {
-    let start = bytes.len();
-    read_bytes(reader, bytes, size_of::<u16>())?;
+    let mut buf = [0; size_of::<u16>()];
+    reader.read_exact(&mut buf)?;
+    bytes.extend_from_slice(&buf);
 
-    Ok(u16::from_be_bytes(
-        bytes[start..]
-            .try_into()
-            .expect("read exactly enough bytes for a u16"),
-    ))
+    Ok(u16::from_be_bytes(buf))
 }
 
 fn read_u8<R: Read>(reader: &mut R, bytes: &mut Vec<u8>) -> Result<u8, NetDecodeError> {
@@ -117,9 +112,8 @@ fn read_u8<R: Read>(reader: &mut R, bytes: &mut Vec<u8>) -> Result<u8, NetDecode
 fn read_tag<R: Read>(reader: &mut R, bytes: &mut Vec<u8>) -> Result<NbtTag, NetDecodeError> {
     let tag = read_u8(reader, bytes)?;
 
-    NbtTag::from_byte(tag).ok_or_else(|| {
-        NetDecodeError::ExternalError(format!("invalid NBT tag: {tag}").into())
-    })
+    NbtTag::from_byte(tag)
+        .ok_or_else(|| NetDecodeError::ExternalError(format!("invalid NBT tag: {tag}").into()))
 }
 
 fn read_bytes<R: Read>(
@@ -127,21 +121,37 @@ fn read_bytes<R: Read>(
     bytes: &mut Vec<u8>,
     len: usize,
 ) -> Result<(), NetDecodeError> {
+    if len == 0 {
+        return Ok(());
+    }
+
     let start = bytes.len();
-    bytes.resize(start + len, 0);
-    reader.read_exact(&mut bytes[start..])?;
+    bytes.reserve(len);
+
+    let buf = {
+        let spare = &mut bytes.spare_capacity_mut()[..len];
+        // SAFETY: `spare` points at `len` contiguous spare `u8` slots owned by
+        // `bytes`. `read_exact` fully initializes them before `set_len` exposes
+        // them as part of the vector.
+        unsafe { std::slice::from_raw_parts_mut(spare.as_mut_ptr().cast::<u8>(), len) }
+    };
+
+    reader.read_exact(buf)?;
+
+    // SAFETY: The previous `read_exact` call initialized exactly `len` bytes.
+    unsafe {
+        bytes.set_len(start + len);
+    }
 
     Ok(())
 }
 
 fn checked_len(len: i32, width: usize) -> Result<usize, NetDecodeError> {
-    let len = usize::try_from(len).map_err(|_| {
-        NetDecodeError::ExternalError("negative NBT length".into())
-    })?;
+    let len = usize::try_from(len)
+        .map_err(|_| NetDecodeError::ExternalError("negative NBT length".into()))?;
 
-    len.checked_mul(width).ok_or_else(|| {
-        NetDecodeError::ExternalError("NBT length overflow".into())
-    })
+    len.checked_mul(width)
+        .ok_or_else(|| NetDecodeError::ExternalError("NBT length overflow".into()))
 }
 
 #[cfg(test)]

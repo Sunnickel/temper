@@ -1,12 +1,12 @@
 use crate::de::converter::FromNbt;
-use crate::{NBTSerializable, NBTSerializeOptions};
+use crate::{NBTError, NBTSerializable, NBTSerializeOptions};
 use std::io::Write;
 use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_general_purpose::simd::arrays;
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum NbtTag {
     End = 0,
     Byte = 1,
@@ -165,6 +165,22 @@ impl<'a> NbtTape<'a> {
         self.parse_tag();
     }
 
+    pub fn parse_network_root(&mut self) -> crate::Result<()> {
+        let tag = self.read_byte();
+        if tag != NbtTag::Compound as u8 {
+            return Err(NBTError::InvalidRootCompound(tag));
+        }
+
+        self.root = Some((
+            "",
+            NbtTapeElement::parse_from_nbt(
+                self,
+                NbtDeserializableOptions::TagType(NbtTag::Compound),
+            ),
+        ));
+        Ok(())
+    }
+
     fn parse_tag(&mut self) {
         let tag = NbtTag::from(self.read_byte());
         if tag != NbtTag::Compound {
@@ -219,7 +235,7 @@ impl<'a> NbtTape<'a> {
                 for _ in 0..*size {
                     let nbt_element = NbtTapeElement::parse_from_nbt(
                         &mut tape,
-                        NbtDeserializableOptions::TagType(el_type.clone()),
+                        NbtDeserializableOptions::TagType(*el_type),
                     );
 
                     let element =
@@ -712,7 +728,7 @@ impl NbtTapeElement<'_> {
                 size,
                 elements_pos,
             } => {
-                writer.write_all(&[el_type.clone() as u8])?;
+                writer.write_all(&[*el_type as u8])?;
                 (*size as i32).serialize(writer, &NBTSerializeOptions::None);
 
                 // Rewind tape to the start of the list.
@@ -722,7 +738,7 @@ impl NbtTapeElement<'_> {
                 for _ in 0..*size {
                     let element = NbtTapeElement::parse_from_nbt(
                         tape,
-                        NbtDeserializableOptions::TagType(el_type.clone()),
+                        NbtDeserializableOptions::TagType(*el_type),
                     );
                     element.serialize_as_network(tape, writer, &NBTSerializeOptions::None)?;
                 }
