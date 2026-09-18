@@ -14,7 +14,7 @@ impl NetDecode for SetCreativeModeSlot {
     fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
         Ok(Self {
             slot_index: i16::decode(reader, opts)?,
-            slot: InventorySlot::decode_with_delimited_components(reader, opts)?,
+            slot: InventorySlot::decode_creative_mode_slot(reader, opts)?,
         })
     }
 }

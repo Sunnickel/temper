@@ -7,7 +7,9 @@ use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::id_or_inline::IdOr;
 use temper_macros::NetDecode;
 use temper_text::TextComponent;
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetDecode)]
+use type_hash::TypeHash;
+
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetDecode, TypeHash)]
 pub struct Instrument {
     pub sound_event: IdOr<SoundEvent>,
     pub use_duration: f32,

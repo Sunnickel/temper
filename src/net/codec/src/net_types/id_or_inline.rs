@@ -6,8 +6,9 @@ use crate::net_types::var_int::VarInt;
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
+use type_hash::TypeHash;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TypeHash)]
 pub enum IdOr<T> {
     Id(VarInt),
     Inline(T),

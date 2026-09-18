@@ -14,17 +14,16 @@ use type_hash::TypeHash;
 pub struct InventorySlot {
     pub count: VarInt,
     pub item_id: Option<ItemID>,
-    #[type_hash(skip)]
+    #[type_hash(foreign_type)]
     pub components_to_add: Option<Vec<ItemComponent>>,
     pub components_to_remove: Option<Vec<VarInt>>,
-    // https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypeHash)]
 pub struct ItemStackTemplate {
     pub item_id: ItemID,
     pub count: VarInt,
-    #[type_hash(skip)]
+    #[type_hash(foreign_type)]
     pub components_to_add: Option<Vec<ItemComponent>>,
     pub components_to_remove: Option<Vec<VarInt>>,
 }
@@ -40,7 +39,7 @@ impl InventorySlot {
     }
 
     /// Creative mode does stuff slightly differently because of course it does
-    pub fn decode_with_delimited_components<R: Read>(
+    pub fn decode_creative_mode_slot<R: Read>(
         reader: &mut R,
         opts: &NetDecodeOpts,
     ) -> Result<Self, NetDecodeError> {

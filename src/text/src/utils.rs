@@ -2,6 +2,7 @@ use crate::*;
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use temper_macros::NBTSerialize;
+use type_hash::TypeHash;
 
 #[macro_export]
 macro_rules! make_bool_setters {
@@ -47,7 +48,7 @@ macro_rules! make_setters {
 }
 
 // TODO: better api for custom colors
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, NBTSerialize, Encode, Decode)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, NBTSerialize, Encode, Decode, TypeHash)]
 #[serde(untagged)]
 #[nbt(tag_type = 8)]
 pub enum Color {
@@ -62,7 +63,7 @@ impl From<NamedColor> for Color {
 }
 
 #[derive(
-    Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize, Encode, Decode,
+    Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize, Encode, Decode, TypeHash,
 )]
 #[serde(rename_all(serialize = "snake_case"))]
 #[nbt(tag_type = 8, tag = "untagged", rename_all = "snake_case")]
@@ -88,7 +89,7 @@ pub enum NamedColor {
 
 /// The font of the text component.
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode, TypeHash)]
 #[nbt(tag_type = 8, tag = "untagged")]
 pub enum Font {
     /// The default font.
@@ -121,7 +122,7 @@ impl From<&str> for Font {
 
 /// The click event of the text component
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode, TypeHash)]
 #[serde(
     tag = "action",
     content = "value",

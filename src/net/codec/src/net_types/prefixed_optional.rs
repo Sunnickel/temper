@@ -6,8 +6,9 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::io::{Read, Write};
+use type_hash::TypeHash;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, TypeHash)]
 pub enum PrefixedOptional<T> {
     None,
     Some(T),

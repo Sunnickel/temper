@@ -6,8 +6,9 @@ use crate::net_types::var_int::VarInt;
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
+use type_hash::TypeHash;
 
-#[derive(Hash, PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(Hash, PartialEq, Debug, Clone, Serialize, Deserialize, TypeHash)]
 pub enum IDSet {
     Indirect(String),
     Direct(Vec<VarInt>),

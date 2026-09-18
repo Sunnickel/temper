@@ -8,12 +8,14 @@ use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::var_int::VarInt;
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+use type_hash::TypeHash;
+
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, TypeHash)]
 pub struct ConsumeEffect {
     pub type_id: VarInt,
     pub data: ConsumeEffectData,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, TypeHash)]
 pub enum ConsumeEffectData {
     ApplyEffects {
         effects: LengthPrefixedVec<PotionEffect>,

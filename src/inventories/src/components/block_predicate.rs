@@ -12,8 +12,9 @@ use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;
 use temper_macros::{Discriminant, NetDecode, NetEncode};
 use temper_nbt::blob::NbtBlob;
+use type_hash::TypeHash;
 
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct BlockPredicate {
     pub blocks: PrefixedOptional<IDSet>,
     pub properties: PrefixedOptional<LengthPrefixedVec<BlockPredicateProperty>>,
@@ -21,12 +22,12 @@ pub struct BlockPredicate {
     pub data_components: LengthPrefixedVec<ExactDataComponentMatcher>,
     pub partial_data_component_predicates: LengthPrefixedVec<PartialDataComponentMatcher>,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct BlockPredicateProperty {
     pub name: String,
     pub matcher: BlockPredicatePropertyMatcher,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, TypeHash)]
 pub enum BlockPredicatePropertyMatcher {
     Exact(String),
     Range {
@@ -34,8 +35,9 @@ pub enum BlockPredicatePropertyMatcher {
         max_value: Option<String>,
     },
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, TypeHash)]
 pub struct ExactDataComponentMatcher {
+    #[type_hash(foreign_type)]
     pub component: Box<ItemComponent>,
 }
 
@@ -48,12 +50,12 @@ impl NetEncode for ExactDataComponentMatcher {
         self.component.as_ref().encode(writer, &NetEncodeOpts::None)
     }
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct PartialDataComponentMatcher {
     pub predicate_type: PartialDataComponentPredicateType,
     pub predicate: NbtBlob,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
 pub enum PartialDataComponentPredicateType {
     Damage,
     Enchantments,
