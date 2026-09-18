@@ -1,4 +1,5 @@
 use super::ItemComponent;
+use bitcode::{Decode, Encode};
 use std::io::{Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -11,7 +12,7 @@ use temper_codec::net_types::var_int::VarInt;
 use temper_macros::{Discriminant, NetDecode, NetEncode};
 use temper_nbt::blob::NbtBlob;
 
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, NetEncode, NetDecode)]
 pub struct BlockPredicate {
     pub blocks: PrefixedOptional<IDSet>,
     pub properties: PrefixedOptional<LengthPrefixedVec<BlockPredicateProperty>>,
@@ -19,13 +20,12 @@ pub struct BlockPredicate {
     pub data_components: LengthPrefixedVec<ExactDataComponentMatcher>,
     pub partial_data_component_predicates: LengthPrefixedVec<PartialDataComponentMatcher>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct BlockPredicateProperty {
     pub name: String,
     pub matcher: BlockPredicatePropertyMatcher,
 }
-
+#[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub enum BlockPredicatePropertyMatcher {
     Exact(String),
     Range {
@@ -33,24 +33,26 @@ pub enum BlockPredicatePropertyMatcher {
         max_value: Option<String>,
     },
 }
-
+#[derive(PartialEq, Debug, Clone)]
 pub struct ExactDataComponentMatcher {
     pub component: Box<ItemComponent>,
 }
 
 impl NetEncode for ExactDataComponentMatcher {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         self.component.as_ref().encode(writer, &NetEncodeOpts::None)
     }
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct PartialDataComponentMatcher {
     pub predicate_type: PartialDataComponentPredicateType,
     pub predicate: NbtBlob,
 }
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum PartialDataComponentPredicateType {
     Damage,
     Enchantments,
@@ -69,7 +71,11 @@ pub enum PartialDataComponentPredicateType {
 }
 
 impl NetEncode for BlockPredicatePropertyMatcher {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         match self {
             Self::Exact(value) => {
                 true.encode(writer, &NetEncodeOpts::None)?;

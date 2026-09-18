@@ -159,6 +159,20 @@ impl NBTSerializable for Uuid {
     }
 }
 
+impl NBTSerializable for u128 {
+    fn serialize<W: Write>(&self, buf: &mut W, options: &NBTSerializeOptions<'_>) {
+         Uuid::from_u128(*self).serialize(buf, options)
+    }
+
+    async fn serialize_async<W: AsyncWrite + Unpin>(&self, buf: &mut W, options: &NBTSerializeOptions<'_>) {
+        Uuid::from_u128(*self).serialize_async(buf, options).await
+    }
+
+    fn id() -> u8 {
+        Uuid::id()
+    }
+}
+
 impl<T: NBTSerializable + std::fmt::Debug> NBTSerializable for Vec<T> {
     fn serialize<W: Write>(&self, buf: &mut W, options: &NBTSerializeOptions<'_>) {
         self.as_slice().serialize(buf, options);

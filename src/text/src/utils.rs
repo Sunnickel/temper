@@ -1,4 +1,5 @@
 use crate::*;
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use temper_macros::NBTSerialize;
 
@@ -46,7 +47,7 @@ macro_rules! make_setters {
 }
 
 // TODO: better api for custom colors
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, NBTSerialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, NBTSerialize, Encode, Decode)]
 #[serde(untagged)]
 #[nbt(tag_type = 8)]
 pub enum Color {
@@ -60,7 +61,7 @@ impl From<NamedColor> for Color {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize, Encode, Decode)]
 #[serde(rename_all(serialize = "snake_case"))]
 #[nbt(tag_type = 8, tag = "untagged", rename_all = "snake_case")]
 pub enum NamedColor {
@@ -85,7 +86,7 @@ pub enum NamedColor {
 
 /// The font of the text component.
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
 #[nbt(tag_type = 8, tag = "untagged")]
 pub enum Font {
     /// The default font.
@@ -118,7 +119,7 @@ impl From<&str> for Font {
 
 /// The click event of the text component
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
 #[serde(
     tag = "action",
     content = "value",
@@ -145,7 +146,7 @@ pub enum ClickEvent {
 
 /// The hover event of the text component
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
 #[serde(
     tag = "action",
     content = "value",
@@ -172,7 +173,6 @@ pub enum HoverEvent {
         ///
         entity_type: String,
         /// The entities uuid.
-        ///
         id: uuid::Uuid,
         /// The entities custom name.
         ///

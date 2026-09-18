@@ -21,6 +21,7 @@ pub use potion_effect::PotionEffect;
 pub use trim::{Trim, TrimMaterial, TrimMaterialOverride, TrimPattern};
 
 use crate::slot::InventorySlot;
+use bitcode::{Decode, Encode};
 use std::io::{Cursor, Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -67,7 +68,7 @@ macro_rules! impl_discriminant_net_decode {
     };
 }
 
-#[derive(Discriminant)]
+#[derive(Debug, Clone, PartialEq, Discriminant)]
 pub enum ItemComponent {
     CustomData(NbtBlob),
     MaxStackSize(VarInt),
@@ -220,7 +221,13 @@ pub enum ItemComponent {
     ShulkerColor(DyeColor),
 }
 
-#[derive(Discriminant)]
+impl Default for ItemComponent {
+    fn default() -> Self {
+        Self::CustomData(NbtBlob::default())
+    }
+}
+
+#[derive(Discriminant, Clone, Debug, PartialEq, Encode, Decode)]
 pub enum Rarity {
     Common,
     Uncommon,
@@ -236,13 +243,13 @@ impl_discriminant_net_decode!(Rarity {
     3 => Rarity::Epic,
 });
 
-#[derive(NetEncode, NetDecode)]
+#[derive(NetEncode, NetDecode, PartialEq, Debug, Clone, Encode, Decode)]
 pub struct Enchantment {
     pub type_id: VarInt,
     pub level: VarInt,
 }
 
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct AttributeModifier {
     pub attribute_id: VarInt,
     pub modifier_id: String,
@@ -251,7 +258,7 @@ pub struct AttributeModifier {
     pub slot: AttributeModifierSlot,
 }
 
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum AttributeModifierOperation {
     Add,
     MultiplyBase,
@@ -264,8 +271,7 @@ impl_discriminant_net_decode!(AttributeModifierOperation {
     1 => AttributeModifierOperation::MultiplyBase,
     2 => AttributeModifierOperation::MultiplyTotal,
 });
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum AttributeModifierSlot {
     Any,
     MainHand,
@@ -293,7 +299,7 @@ impl_discriminant_net_decode!(AttributeModifierSlot {
     9 => AttributeModifierSlot::Body,
 });
 
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct CustomModelData {
     pub floats: LengthPrefixedVec<f32>,
     pub flags: LengthPrefixedVec<bool>,
@@ -301,20 +307,18 @@ pub struct CustomModelData {
     pub colors: LengthPrefixedVec<i32>,
 }
 
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct TooltipDisplay {
     pub hide_tooltip: bool,
     pub hidden_components: LengthPrefixedVec<VarInt>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Food {
     pub nutrition: VarInt,
     pub saturation_modifier: f32,
     pub can_always_eat: bool,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Consumable {
     pub consume_seconds: f32,
     pub animation: ConsumeAnimation,
@@ -322,8 +326,7 @@ pub struct Consumable {
     pub has_consume_particles: bool,
     pub effects: LengthPrefixedVec<ConsumeEffect>,
 }
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum ConsumeAnimation {
     None,
     Eat,
@@ -350,21 +353,18 @@ impl_discriminant_net_decode!(ConsumeAnimation {
     8 => ConsumeAnimation::TootHorn,
     9 => ConsumeAnimation::Brush,
 });
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct UseCooldown {
     pub seconds: f32,
     pub cooldown_group: PrefixedOptional<String>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct UseEffects {
     pub can_sprint: bool,
     pub interact_vibrations: bool,
     pub speed_multiplier: f32,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct AttackRange {
     pub min_reach: f32,
     pub max_reach: f32,
@@ -373,29 +373,25 @@ pub struct AttackRange {
     pub hitbox_margin: f32,
     pub mob_factor: f32,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Weapon {
     pub damage_per_attack: VarInt,
     pub disable_blocking_for: f32,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Tool {
     pub rules: LengthPrefixedVec<ToolRule>,
     pub default_mining_speed: f32,
     pub damage_per_block: VarInt,
     pub can_destroy_blocks_in_creative: bool,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct ToolRule {
     pub blocks: IDSet,
     pub speed: PrefixedOptional<f32>,
     pub correct_drop_for_blocks: PrefixedOptional<bool>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Equippable {
     pub slot: EquippableSlot,
     pub equip_sound: IdOr<SoundEvent>,
@@ -408,8 +404,7 @@ pub struct Equippable {
     pub can_be_sheared: bool,
     pub shearing_sound: IdOr<SoundEvent>,
 }
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum EquippableSlot {
     MainHand,
     Feet,
@@ -430,8 +425,7 @@ impl_discriminant_net_decode!(EquippableSlot {
     5 => EquippableSlot::OffHand,
     6 => EquippableSlot::Body,
 });
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct BlocksAttacks {
     pub block_delay_seconds: f32,
     pub disable_cooldown_scale: f32,
@@ -443,16 +437,14 @@ pub struct BlocksAttacks {
     pub block_sound: PrefixedOptional<IdOr<SoundEvent>>,
     pub disable_sound: PrefixedOptional<IdOr<SoundEvent>>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct DamageReduction {
     pub horizontal_blocking_angle: f32,
     pub r#type: PrefixedOptional<IDSet>,
     pub base: f32,
     pub factor: f32,
 }
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum MapPostProcessing {
     Lock,
     Scale,
@@ -463,28 +455,24 @@ impl_discriminant_net_decode!(MapPostProcessing {
     0 => MapPostProcessing::Lock,
     1 => MapPostProcessing::Scale,
 });
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct SuspiciousStewEffect {
     pub type_id: VarInt,
     pub duration: VarInt,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct PotionContents {
     pub potion_id: PrefixedOptional<VarInt>,
     pub custom_color: PrefixedOptional<i32>,
     pub custom_effects: LengthPrefixedVec<PotionEffect>,
     pub custom_name: PrefixedOptional<String>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct WritableBookPage {
     pub raw_content: String,
     pub filtered_content: PrefixedOptional<String>,
 }
-
-#[derive(NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetDecode)]
 pub struct WrittenBookContent {
     pub raw_title: String,
     pub filtered_title: PrefixedOptional<String>,
@@ -493,40 +481,34 @@ pub struct WrittenBookContent {
     pub pages: LengthPrefixedVec<WrittenBookPage>,
     pub resolved: bool,
 }
-
-#[derive(NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetDecode)]
 pub struct WrittenBookPage {
     pub raw_content: TextComponent,
     pub filtered_content: PrefixedOptional<TextComponent>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct EntityData {
     pub entity_type: VarInt,
     pub data: NbtBlob,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct BlockEntityData {
     pub block_entity_type: VarInt,
     pub data: NbtBlob,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct PiercingWeapon {
     pub deals_knockback: bool,
     pub dismounts: bool,
     pub sound: PrefixedOptional<SoundEvent>,
     pub hit_sound: PrefixedOptional<SoundEvent>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct SwingAnimation {
     pub r#type: SwingAnimationType,
     pub duration: VarInt,
 }
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum SwingAnimationType {
     None,
     Whack,
@@ -539,8 +521,7 @@ impl_discriminant_net_decode!(SwingAnimationType {
     1 => SwingAnimationType::Whack,
     2 => SwingAnimationType::Stab,
 });
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum DyeColor {
     White,
     Orange,
@@ -579,28 +560,24 @@ impl_discriminant_net_decode!(DyeColor {
     14 => DyeColor::Red,
     15 => DyeColor::Black,
 });
-
-#[derive(NetEncode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode)]
 pub struct LodestoneTracker {
     pub has_global_position: bool,
     pub dimension: Option<String>,
     pub position: Option<NetworkPosition>,
     pub tracked: bool,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct SoundEvent {
     pub sound_id: String,
     pub fixed_range: PrefixedOptional<f32>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct BlockStateProperty {
     pub name: String,
     pub value: String,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Bee {
     pub entity_type: VarInt,
     pub entity_data: NbtBlob,
@@ -656,7 +633,9 @@ fn encode_component_body<W: Write>(
         ItemComponent::TooltipDisplay(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::RepairCost(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::CreativeSlotLock => Ok(()),
-        ItemComponent::EnchantmentGlintOverride(value) => value.encode(writer, &NetEncodeOpts::None),
+        ItemComponent::EnchantmentGlintOverride(value) => {
+            value.encode(writer, &NetEncodeOpts::None)
+        }
         ItemComponent::IntangibleProjectile(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::Food(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::Consumable(value) => value.encode(writer, &NetEncodeOpts::None),
@@ -719,7 +698,9 @@ fn encode_component_body<W: Write>(
         ItemComponent::Lock(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::ContainerLoot(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::BreakSound(value) => value.encode(writer, &NetEncodeOpts::None),
-        ItemComponent::SulfurCubeContent(value) => value.as_ref().encode(writer, &NetEncodeOpts::None),
+        ItemComponent::SulfurCubeContent(value) => {
+            value.as_ref().encode(writer, &NetEncodeOpts::None)
+        }
         ItemComponent::VillagerVariant(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::WolfVariant(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::WolfSoundVariant(value) => value.encode(writer, &NetEncodeOpts::None),
@@ -729,7 +710,9 @@ fn encode_component_body<W: Write>(
         ItemComponent::ParrotVariant(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::TropicalFishPattern(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::TropicalFishBaseColor(value) => value.encode(writer, &NetEncodeOpts::None),
-        ItemComponent::TropicalFishPatternColor(value) => value.encode(writer, &NetEncodeOpts::None),
+        ItemComponent::TropicalFishPatternColor(value) => {
+            value.encode(writer, &NetEncodeOpts::None)
+        }
         ItemComponent::MooshroomVariant(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::RabbitVariant(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::PigVariant(value) => value.encode(writer, &NetEncodeOpts::None),
@@ -770,7 +753,11 @@ impl NetEncode for ItemComponent {
 }
 
 impl NetEncode for WrittenBookContent {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         self.raw_title.encode(writer, &NetEncodeOpts::None)?;
         self.filtered_title.encode(writer, &NetEncodeOpts::None)?;
         self.author.encode(writer, &NetEncodeOpts::None)?;
@@ -781,7 +768,11 @@ impl NetEncode for WrittenBookContent {
 }
 
 impl NetEncode for WrittenBookPage {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         encode_text_component(&self.raw_content, writer, &NetEncodeOpts::None)?;
 
         match &self.filtered_content {
@@ -840,120 +831,420 @@ impl NetDecode for ItemComponent {
 
 fn decode_component_body<R: Read>(reader: &mut R) -> Result<ItemComponent, NetDecodeError> {
     match VarInt::decode(reader, &NetDecodeOpts::None)?.0 {
-        0 => Ok(ItemComponent::CustomData(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        1 => Ok(ItemComponent::MaxStackSize(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        2 => Ok(ItemComponent::MaxDamage(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        3 => Ok(ItemComponent::Damage(VarInt::decode(reader, &NetDecodeOpts::None)?)),
+        0 => Ok(ItemComponent::CustomData(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        1 => Ok(ItemComponent::MaxStackSize(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        2 => Ok(ItemComponent::MaxDamage(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        3 => Ok(ItemComponent::Damage(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         4 => Ok(ItemComponent::Unbreakable),
         5 => Ok(ItemComponent::CustomName(decode_box(reader)?)),
         6 => Ok(ItemComponent::ItemName(decode_box(reader)?)),
-        7 => Ok(ItemComponent::ItemModel(String::decode(reader, &NetDecodeOpts::None)?)),
-        8 => Ok(ItemComponent::Lore(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        9 => Ok(ItemComponent::Rarity(Rarity::decode(reader, &NetDecodeOpts::None)?)),
-        10 => Ok(ItemComponent::Enchantments(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        11 => Ok(ItemComponent::CanPlaceOn(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        12 => Ok(ItemComponent::CanBreak(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        13 => Ok(ItemComponent::AttributeModifiers(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        14 => Ok(ItemComponent::CustomModelData(CustomModelData::decode(reader, &NetDecodeOpts::None)?)),
-        15 => Ok(ItemComponent::TooltipDisplay(TooltipDisplay::decode(reader, &NetDecodeOpts::None)?)),
-        16 => Ok(ItemComponent::RepairCost(VarInt::decode(reader, &NetDecodeOpts::None)?)),
+        7 => Ok(ItemComponent::ItemModel(String::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        8 => Ok(ItemComponent::Lore(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        9 => Ok(ItemComponent::Rarity(Rarity::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        10 => Ok(ItemComponent::Enchantments(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        11 => Ok(ItemComponent::CanPlaceOn(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        12 => Ok(ItemComponent::CanBreak(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        13 => Ok(ItemComponent::AttributeModifiers(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        14 => Ok(ItemComponent::CustomModelData(CustomModelData::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        15 => Ok(ItemComponent::TooltipDisplay(TooltipDisplay::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        16 => Ok(ItemComponent::RepairCost(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         17 => Ok(ItemComponent::CreativeSlotLock),
-        18 => Ok(ItemComponent::EnchantmentGlintOverride(bool::decode(reader, &NetDecodeOpts::None)?)),
-        19 => Ok(ItemComponent::IntangibleProjectile(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        20 => Ok(ItemComponent::Food(Food::decode(reader, &NetDecodeOpts::None)?)),
-        21 => Ok(ItemComponent::Consumable(Consumable::decode(reader, &NetDecodeOpts::None)?)),
+        18 => Ok(ItemComponent::EnchantmentGlintOverride(bool::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        19 => Ok(ItemComponent::IntangibleProjectile(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        20 => Ok(ItemComponent::Food(Food::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        21 => Ok(ItemComponent::Consumable(Consumable::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         22 => Ok(ItemComponent::UseRemainder(decode_box(reader)?)),
-        23 => Ok(ItemComponent::UseCooldown(UseCooldown::decode(reader, &NetDecodeOpts::None)?)),
-        24 => Ok(ItemComponent::UseEffects(UseEffects::decode(reader, &NetDecodeOpts::None)?)),
-        25 => Ok(ItemComponent::MinimumAttackCharge(f32::decode(reader, &NetDecodeOpts::None)?)),
-        26 => Ok(ItemComponent::DamageType(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        27 => Ok(ItemComponent::DamageResistant(IDSet::decode(reader, &NetDecodeOpts::None)?)),
-        28 => Ok(ItemComponent::AttackRange(AttackRange::decode(reader, &NetDecodeOpts::None)?)),
-        29 => Ok(ItemComponent::Tool(Tool::decode(reader, &NetDecodeOpts::None)?)),
-        30 => Ok(ItemComponent::Weapon(Weapon::decode(reader, &NetDecodeOpts::None)?)),
-        31 => Ok(ItemComponent::Enchantable(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        32 => Ok(ItemComponent::Equippable(Equippable::decode(reader, &NetDecodeOpts::None)?)),
-        33 => Ok(ItemComponent::Repairable(IDSet::decode(reader, &NetDecodeOpts::None)?)),
+        23 => Ok(ItemComponent::UseCooldown(UseCooldown::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        24 => Ok(ItemComponent::UseEffects(UseEffects::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        25 => Ok(ItemComponent::MinimumAttackCharge(f32::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        26 => Ok(ItemComponent::DamageType(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        27 => Ok(ItemComponent::DamageResistant(IDSet::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        28 => Ok(ItemComponent::AttackRange(AttackRange::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        29 => Ok(ItemComponent::Tool(Tool::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        30 => Ok(ItemComponent::Weapon(Weapon::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        31 => Ok(ItemComponent::Enchantable(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        32 => Ok(ItemComponent::Equippable(Equippable::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        33 => Ok(ItemComponent::Repairable(IDSet::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         34 => Ok(ItemComponent::Glider),
-        35 => Ok(ItemComponent::TooltipStyle(String::decode(reader, &NetDecodeOpts::None)?)),
-        36 => Ok(ItemComponent::DeathProtection(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        37 => Ok(ItemComponent::BlocksAttacks(BlocksAttacks::decode(reader, &NetDecodeOpts::None)?)),
-        38 => Ok(ItemComponent::StoredEnchantments(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        39 => Ok(ItemComponent::DyedColor(i32::decode(reader, &NetDecodeOpts::None)?)),
-        40 => Ok(ItemComponent::MapColor(i32::decode(reader, &NetDecodeOpts::None)?)),
-        41 => Ok(ItemComponent::MapId(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        42 => Ok(ItemComponent::MapDecorations(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        43 => Ok(ItemComponent::MapPostProcessing(MapPostProcessing::decode(reader, &NetDecodeOpts::None)?)),
-        44 => Ok(ItemComponent::ChargedProjectiles(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        45 => Ok(ItemComponent::BundleContents(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        46 => Ok(ItemComponent::PotionContents(PotionContents::decode(reader, &NetDecodeOpts::None)?)),
-        47 => Ok(ItemComponent::PotionDurationScale(f32::decode(reader, &NetDecodeOpts::None)?)),
-        48 => Ok(ItemComponent::SuspiciousStewEffects(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        49 => Ok(ItemComponent::WritableBookContent(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        50 => Ok(ItemComponent::WrittenBookContent(WrittenBookContent::decode(reader, &NetDecodeOpts::None)?)),
+        35 => Ok(ItemComponent::TooltipStyle(String::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        36 => Ok(ItemComponent::DeathProtection(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        37 => Ok(ItemComponent::BlocksAttacks(BlocksAttacks::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        38 => Ok(ItemComponent::StoredEnchantments(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        39 => Ok(ItemComponent::DyedColor(i32::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        40 => Ok(ItemComponent::MapColor(i32::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        41 => Ok(ItemComponent::MapId(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        42 => Ok(ItemComponent::MapDecorations(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        43 => Ok(ItemComponent::MapPostProcessing(MapPostProcessing::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        44 => Ok(ItemComponent::ChargedProjectiles(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        45 => Ok(ItemComponent::BundleContents(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        46 => Ok(ItemComponent::PotionContents(PotionContents::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        47 => Ok(ItemComponent::PotionDurationScale(f32::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        48 => Ok(ItemComponent::SuspiciousStewEffects(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        49 => Ok(ItemComponent::WritableBookContent(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        50 => Ok(ItemComponent::WrittenBookContent(
+            WrittenBookContent::decode(reader, &NetDecodeOpts::None)?,
+        )),
         51 => Ok(ItemComponent::Trim(Box::new(Trim {
             material: IdOr::decode(reader, &NetDecodeOpts::None)?,
             pattern: IdOr::decode(reader, &NetDecodeOpts::None)?,
         }))),
-        52 => Ok(ItemComponent::DebugStickState(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        53 => Ok(ItemComponent::EntityData(EntityData::decode(reader, &NetDecodeOpts::None)?)),
-        54 => Ok(ItemComponent::BucketEntityData(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        55 => Ok(ItemComponent::BlockEntityData(BlockEntityData::decode(reader, &NetDecodeOpts::None)?)),
-        56 => Ok(ItemComponent::Instrument(IdOr::decode(reader, &NetDecodeOpts::None)?)),
-        57 => Ok(ItemComponent::PiercingWeapon(PiercingWeapon::decode(reader, &NetDecodeOpts::None)?)),
-        58 => Ok(ItemComponent::KineticWeapon(KineticWeapon::decode(reader, &NetDecodeOpts::None)?)),
-        59 => Ok(ItemComponent::SwingAnimation(SwingAnimation::decode(reader, &NetDecodeOpts::None)?)),
-        60 => Ok(ItemComponent::AdditionalTradeCost(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        61 => Ok(ItemComponent::Dye(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        62 => Ok(ItemComponent::ProvidesTrimMaterial(IdOr::decode(reader, &NetDecodeOpts::None)?)),
-        63 => Ok(ItemComponent::OminousBottleAmplifier(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        64 => Ok(ItemComponent::JukeboxPlayable(IdOr::decode(reader, &NetDecodeOpts::None)?)),
-        65 => Ok(ItemComponent::ProvidesBannerPatterns(IDSet::decode(reader, &NetDecodeOpts::None)?)),
-        66 => Ok(ItemComponent::Recipes(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        67 => Ok(ItemComponent::LodestoneTracker(LodestoneTracker::decode(reader, &NetDecodeOpts::None)?)),
-        68 => Ok(ItemComponent::FireworkExplosion(FireworkExplosion::decode(reader, &NetDecodeOpts::None)?)),
-        69 => Ok(ItemComponent::Fireworks(Fireworks::decode(reader, &NetDecodeOpts::None)?)),
+        52 => Ok(ItemComponent::DebugStickState(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        53 => Ok(ItemComponent::EntityData(EntityData::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        54 => Ok(ItemComponent::BucketEntityData(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        55 => Ok(ItemComponent::BlockEntityData(BlockEntityData::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        56 => Ok(ItemComponent::Instrument(IdOr::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        57 => Ok(ItemComponent::PiercingWeapon(PiercingWeapon::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        58 => Ok(ItemComponent::KineticWeapon(KineticWeapon::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        59 => Ok(ItemComponent::SwingAnimation(SwingAnimation::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        60 => Ok(ItemComponent::AdditionalTradeCost(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        61 => Ok(ItemComponent::Dye(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        62 => Ok(ItemComponent::ProvidesTrimMaterial(IdOr::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        63 => Ok(ItemComponent::OminousBottleAmplifier(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        64 => Ok(ItemComponent::JukeboxPlayable(IdOr::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        65 => Ok(ItemComponent::ProvidesBannerPatterns(IDSet::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        66 => Ok(ItemComponent::Recipes(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        67 => Ok(ItemComponent::LodestoneTracker(LodestoneTracker::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        68 => Ok(ItemComponent::FireworkExplosion(FireworkExplosion::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        69 => Ok(ItemComponent::Fireworks(Fireworks::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         70 => unsupported_component("profile"),
-        71 => Ok(ItemComponent::NoteBlockSound(String::decode(reader, &NetDecodeOpts::None)?)),
-        72 => Ok(ItemComponent::BannerPatterns(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        73 => Ok(ItemComponent::BaseColor(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        74 => Ok(ItemComponent::PotDecorations(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        75 => Ok(ItemComponent::Container(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        76 => Ok(ItemComponent::BlockState(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        77 => Ok(ItemComponent::Bees(LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?)),
-        78 => Ok(ItemComponent::Lock(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        79 => Ok(ItemComponent::ContainerLoot(NbtBlob::decode(reader, &NetDecodeOpts::None)?)),
-        80 => Ok(ItemComponent::BreakSound(IdOr::decode(reader, &NetDecodeOpts::None)?)),
+        71 => Ok(ItemComponent::NoteBlockSound(String::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        72 => Ok(ItemComponent::BannerPatterns(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        73 => Ok(ItemComponent::BaseColor(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        74 => Ok(ItemComponent::PotDecorations(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        75 => Ok(ItemComponent::Container(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        76 => Ok(ItemComponent::BlockState(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        77 => Ok(ItemComponent::Bees(LengthPrefixedVec::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        78 => Ok(ItemComponent::Lock(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        79 => Ok(ItemComponent::ContainerLoot(NbtBlob::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        80 => Ok(ItemComponent::BreakSound(IdOr::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         81 => Ok(ItemComponent::SulfurCubeContent(decode_box(reader)?)),
-        82 => Ok(ItemComponent::VillagerVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        83 => Ok(ItemComponent::WolfVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        84 => Ok(ItemComponent::WolfSoundVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        85 => Ok(ItemComponent::WolfCollar(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        86 => Ok(ItemComponent::FoxVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        87 => Ok(ItemComponent::SalmonSize(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        88 => Ok(ItemComponent::ParrotVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        89 => Ok(ItemComponent::TropicalFishPattern(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        90 => Ok(ItemComponent::TropicalFishBaseColor(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        91 => Ok(ItemComponent::TropicalFishPatternColor(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        92 => Ok(ItemComponent::MooshroomVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        93 => Ok(ItemComponent::RabbitVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        94 => Ok(ItemComponent::PigVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        95 => Ok(ItemComponent::PigSoundVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        96 => Ok(ItemComponent::CowVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        97 => Ok(ItemComponent::CowSoundVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        98 => Ok(ItemComponent::ChickenVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        99 => Ok(ItemComponent::ChickenSoundVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        100 => Ok(ItemComponent::FrogVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        101 => Ok(ItemComponent::HorseVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        102 => Ok(ItemComponent::PaintingVariant(IdOr::decode(reader, &NetDecodeOpts::None)?)),
-        103 => Ok(ItemComponent::LlamaVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        104 => Ok(ItemComponent::AxolotlVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        105 => Ok(ItemComponent::ZombieNautilusVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        106 => Ok(ItemComponent::CatVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        107 => Ok(ItemComponent::CatSoundVariant(VarInt::decode(reader, &NetDecodeOpts::None)?)),
-        108 => Ok(ItemComponent::CatCollar(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        109 => Ok(ItemComponent::SheepColor(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
-        110 => Ok(ItemComponent::ShulkerColor(DyeColor::decode(reader, &NetDecodeOpts::None)?)),
+        82 => Ok(ItemComponent::VillagerVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        83 => Ok(ItemComponent::WolfVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        84 => Ok(ItemComponent::WolfSoundVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        85 => Ok(ItemComponent::WolfCollar(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        86 => Ok(ItemComponent::FoxVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        87 => Ok(ItemComponent::SalmonSize(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        88 => Ok(ItemComponent::ParrotVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        89 => Ok(ItemComponent::TropicalFishPattern(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        90 => Ok(ItemComponent::TropicalFishBaseColor(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        91 => Ok(ItemComponent::TropicalFishPatternColor(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        92 => Ok(ItemComponent::MooshroomVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        93 => Ok(ItemComponent::RabbitVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        94 => Ok(ItemComponent::PigVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        95 => Ok(ItemComponent::PigSoundVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        96 => Ok(ItemComponent::CowVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        97 => Ok(ItemComponent::CowSoundVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        98 => Ok(ItemComponent::ChickenVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        99 => Ok(ItemComponent::ChickenSoundVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        100 => Ok(ItemComponent::FrogVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        101 => Ok(ItemComponent::HorseVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        102 => Ok(ItemComponent::PaintingVariant(IdOr::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        103 => Ok(ItemComponent::LlamaVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        104 => Ok(ItemComponent::AxolotlVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        105 => Ok(ItemComponent::ZombieNautilusVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        106 => Ok(ItemComponent::CatVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        107 => Ok(ItemComponent::CatSoundVariant(VarInt::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        108 => Ok(ItemComponent::CatCollar(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        109 => Ok(ItemComponent::SheepColor(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
+        110 => Ok(ItemComponent::ShulkerColor(DyeColor::decode(
+            reader,
+            &NetDecodeOpts::None,
+        )?)),
         _ => Err(NetDecodeError::InvalidEnumVariant),
     }
 }

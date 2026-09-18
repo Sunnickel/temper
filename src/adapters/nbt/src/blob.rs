@@ -1,14 +1,17 @@
 use crate::de::borrow::NbtTag;
+use bitcode::{Decode, Encode};
 use std::io::{Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
 use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
+use type_hash::TypeHash;
 
 const INITIAL_BLOB_CAPACITY: usize = 256;
 
 /// A lump of NBT data as bytes. Useful for when you need to read
 /// some NBT but don't actually care what's in there.
+#[derive(Debug, Clone, Hash, Default, PartialEq, Decode, Encode, TypeHash)]
 pub struct NbtBlob(pub Vec<u8>);
 
 impl NetDecode for NbtBlob {

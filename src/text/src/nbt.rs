@@ -149,7 +149,7 @@ fn required_element<'a, 'b>(
     element.get(key).ok_or(NBTError::ElementNotFound(key))
 }
 
-fn string_value(element: &NbtTapeElement) -> temper_nbt::Result<&str> {
+fn string_value<'a>(element: &'a NbtTapeElement<'a>) -> temper_nbt::Result<&'a str> {
     match element {
         NbtTapeElement::String(value) => Ok(value),
         _ => Err(NBTError::TypeMismatch {

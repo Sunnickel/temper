@@ -1,3 +1,4 @@
+use bitcode::{Decode, Encode};
 use std::io::Write;
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -6,14 +7,12 @@ use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::var_int::VarInt;
 use temper_macros::{Discriminant, NetDecode, NetEncode};
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct Fireworks {
     pub flight_duration: VarInt,
     pub explosions: LengthPrefixedVec<FireworkExplosion>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct FireworkExplosion {
     pub shape: FireworkExplosionShape,
     pub colors: LengthPrefixedVec<i32>,
@@ -21,8 +20,7 @@ pub struct FireworkExplosion {
     pub has_trail: bool,
     pub has_twinkle: bool,
 }
-
-#[derive(Discriminant)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
 pub enum FireworkExplosionShape {
     SmallBall,
     LargeBall,

@@ -1,9 +1,10 @@
 use super::SoundEvent;
+use bitcode::{Decode, Encode};
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;
 use temper_macros::{NetDecode, NetEncode};
 
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct KineticWeapon {
     pub contact_cooldown_ticks: VarInt,
     pub delay_ticks: VarInt,
@@ -15,8 +16,7 @@ pub struct KineticWeapon {
     pub sound: PrefixedOptional<SoundEvent>,
     pub hit_sound: PrefixedOptional<SoundEvent>,
 }
-
-#[derive(NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
 pub struct KineticWeaponConditions {
     pub max_duration_ticks: VarInt,
     pub min_speed: f32,

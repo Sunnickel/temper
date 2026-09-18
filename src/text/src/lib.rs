@@ -1,3 +1,4 @@
+use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use temper_macros::NBTSerialize;
 
@@ -17,7 +18,7 @@ pub type JsonTextComponent = String;
 
 /// A TextComponent that can be a Text, Translate or Keybind.
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Default, NBTSerialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Default, NBTSerialize, Encode, Decode)]
 #[serde(rename_all = "snake_case")]
 #[nbt(rename_all = "snake_case")]
 pub struct TextComponent {
@@ -85,7 +86,7 @@ pub struct TextComponent {
     pub extra: Vec<TextComponent>,
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
 #[serde(untagged)]
 pub enum TextContent {
     Text {

@@ -1,4 +1,5 @@
 use crate::components::potion_effect::PotionEffect;
+use bitcode::{Decode, Encode};
 use std::io::{Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -6,12 +7,12 @@ use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::var_int::VarInt;
-
+#[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct ConsumeEffect {
     pub type_id: VarInt,
     pub data: ConsumeEffectData,
 }
-
+#[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub enum ConsumeEffectData {
     ApplyEffects {
         effects: LengthPrefixedVec<PotionEffect>,

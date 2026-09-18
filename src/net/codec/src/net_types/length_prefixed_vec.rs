@@ -3,10 +3,11 @@ use crate::decode::{NetDecode, NetDecodeOpts};
 use crate::encode::errors::NetEncodeError;
 use crate::encode::{NetEncode, NetEncodeOpts};
 use crate::net_types::var_int::VarInt;
+use bitcode::{Decode, Encode};
 use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Encode, Decode)]
 pub struct LengthPrefixedVec<T> {
     pub length: VarInt,
     pub data: Vec<T>,
