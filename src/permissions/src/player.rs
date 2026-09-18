@@ -1,6 +1,5 @@
 use crate::{Access, PermissionSet, Permissions};
 use bevy_ecs::prelude::Component;
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use type_hash::TypeHash;

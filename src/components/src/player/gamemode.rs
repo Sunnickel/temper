@@ -1,6 +1,5 @@
 use crate::player::abilities::PlayerAbilities;
 use bevy_ecs::prelude::Component;
-use bitcode_derive::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use temper_codec::encode::errors::NetEncodeError;

@@ -1,4 +1,3 @@
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use temper_macros::{NetDecode, NetEncode};
 use type_hash::TypeHash;

@@ -1,4 +1,3 @@
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use temper_codec::decode::errors::NetDecodeError;

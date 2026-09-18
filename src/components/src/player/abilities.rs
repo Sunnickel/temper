@@ -1,6 +1,5 @@
 use super::gamemode::GameMode;
 use bevy_ecs::prelude::Component;
-use bitcode_derive::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use type_hash::TypeHash;
 

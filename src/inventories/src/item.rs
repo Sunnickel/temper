@@ -1,4 +1,3 @@
-use bitcode_derive::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::io::{Read, Write};

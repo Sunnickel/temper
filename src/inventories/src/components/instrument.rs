@@ -1,5 +1,4 @@
 use super::{SoundEvent, encode_text_component};
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use temper_codec::encode::errors::NetEncodeError;

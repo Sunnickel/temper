@@ -1,5 +1,4 @@
 use bevy_ecs::component::Component;
-use bitcode_derive::{Decode, Encode};
 use std::collections::HashMap;
 use type_hash::TypeHash;
 use uuid::Uuid;

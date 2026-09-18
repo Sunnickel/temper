@@ -1,5 +1,4 @@
 use crate::components::potion_effect::PotionEffect;
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use temper_codec::decode::errors::NetDecodeError;

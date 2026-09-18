@@ -21,7 +21,6 @@ pub use potion_effect::PotionEffect;
 pub use trim::{Trim, TrimMaterial, TrimMaterialOverride, TrimPattern};
 
 use crate::slot::{InventorySlot, ItemStackTemplate};
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
@@ -881,10 +880,9 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::Enchantments => Ok(ItemComponent::Enchantments(LengthPrefixedVec::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::Enchantments => Ok(ItemComponent::Enchantments(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::CanPlaceOn => Ok(ItemComponent::CanPlaceOn(LengthPrefixedVec::decode(
             reader,
             &NetDecodeOpts::None,
@@ -896,27 +894,23 @@ pub fn decode_component_value<R: Read>(
         ItemComponentKind::AttributeModifiers => Ok(ItemComponent::AttributeModifiers(
             LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
         )),
-        ItemComponentKind::CustomModelData => Ok(ItemComponent::CustomModelData(CustomModelData::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::TooltipDisplay => Ok(ItemComponent::TooltipDisplay(TooltipDisplay::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::CustomModelData => Ok(ItemComponent::CustomModelData(
+            CustomModelData::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::TooltipDisplay => Ok(ItemComponent::TooltipDisplay(
+            TooltipDisplay::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::RepairCost => Ok(ItemComponent::RepairCost(VarInt::decode(
             reader,
             &NetDecodeOpts::None,
         )?)),
         ItemComponentKind::CreativeSlotLock => Ok(ItemComponent::CreativeSlotLock),
-        ItemComponentKind::EnchantmentGlintOverride => Ok(ItemComponent::EnchantmentGlintOverride(bool::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::IntangibleProjectile => Ok(ItemComponent::IntangibleProjectile(NbtBlob::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::EnchantmentGlintOverride => Ok(ItemComponent::EnchantmentGlintOverride(
+            bool::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::IntangibleProjectile => Ok(ItemComponent::IntangibleProjectile(
+            NbtBlob::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::Food => Ok(ItemComponent::Food(Food::decode(
             reader,
             &NetDecodeOpts::None,
@@ -934,10 +928,9 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::MinimumAttackCharge => Ok(ItemComponent::MinimumAttackCharge(f32::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::MinimumAttackCharge => Ok(ItemComponent::MinimumAttackCharge(
+            f32::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::DamageType => Ok(ItemComponent::DamageType(VarInt::decode(
             reader,
             &NetDecodeOpts::None,
@@ -975,14 +968,12 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::DeathProtection => Ok(ItemComponent::DeathProtection(LengthPrefixedVec::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::BlocksAttacks => Ok(ItemComponent::BlocksAttacks(BlocksAttacks::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::DeathProtection => Ok(ItemComponent::DeathProtection(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::BlocksAttacks => Ok(ItemComponent::BlocksAttacks(
+            BlocksAttacks::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::StoredEnchantments => Ok(ItemComponent::StoredEnchantments(
             LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
         )),
@@ -1002,25 +993,21 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::MapPostProcessing => Ok(ItemComponent::MapPostProcessing(MapPostProcessing::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::MapPostProcessing => Ok(ItemComponent::MapPostProcessing(
+            MapPostProcessing::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::ChargedProjectiles => Ok(ItemComponent::ChargedProjectiles(
             LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
         )),
-        ItemComponentKind::BundleContents => Ok(ItemComponent::BundleContents(LengthPrefixedVec::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::PotionContents => Ok(ItemComponent::PotionContents(PotionContents::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::PotionDurationScale => Ok(ItemComponent::PotionDurationScale(f32::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::BundleContents => Ok(ItemComponent::BundleContents(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::PotionContents => Ok(ItemComponent::PotionContents(
+            PotionContents::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::PotionDurationScale => Ok(ItemComponent::PotionDurationScale(
+            f32::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::SuspiciousStewEffects => Ok(ItemComponent::SuspiciousStewEffects(
             LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
         )),
@@ -1042,66 +1029,55 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::BucketEntityData => Ok(ItemComponent::BucketEntityData(NbtBlob::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::BlockEntityData => Ok(ItemComponent::BlockEntityData(BlockEntityData::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::BucketEntityData => Ok(ItemComponent::BucketEntityData(
+            NbtBlob::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::BlockEntityData => Ok(ItemComponent::BlockEntityData(
+            BlockEntityData::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::Instrument => Ok(ItemComponent::Instrument(IdOr::decode(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::PiercingWeapon => Ok(ItemComponent::PiercingWeapon(PiercingWeapon::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::KineticWeapon => Ok(ItemComponent::KineticWeapon(KineticWeapon::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::SwingAnimation => Ok(ItemComponent::SwingAnimation(SwingAnimation::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::AdditionalTradeCost => Ok(ItemComponent::AdditionalTradeCost(VarInt::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::PiercingWeapon => Ok(ItemComponent::PiercingWeapon(
+            PiercingWeapon::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::KineticWeapon => Ok(ItemComponent::KineticWeapon(
+            KineticWeapon::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::SwingAnimation => Ok(ItemComponent::SwingAnimation(
+            SwingAnimation::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::AdditionalTradeCost => Ok(ItemComponent::AdditionalTradeCost(
+            VarInt::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::Dye => Ok(ItemComponent::Dye(DyeColor::decode(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::ProvidesTrimMaterial => Ok(ItemComponent::ProvidesTrimMaterial(IdOr::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::OminousBottleAmplifier => Ok(ItemComponent::OminousBottleAmplifier(VarInt::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::ProvidesTrimMaterial => Ok(ItemComponent::ProvidesTrimMaterial(
+            IdOr::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::OminousBottleAmplifier => Ok(ItemComponent::OminousBottleAmplifier(
+            VarInt::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::JukeboxPlayable => Ok(ItemComponent::JukeboxPlayable(IdOr::decode(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::ProvidesBannerPatterns => Ok(ItemComponent::ProvidesBannerPatterns(IDSet::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::ProvidesBannerPatterns => Ok(ItemComponent::ProvidesBannerPatterns(
+            IDSet::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::Recipes => Ok(ItemComponent::Recipes(NbtBlob::decode(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::LodestoneTracker => Ok(ItemComponent::LodestoneTracker(LodestoneTracker::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::FireworkExplosion => Ok(ItemComponent::FireworkExplosion(FireworkExplosion::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::LodestoneTracker => Ok(ItemComponent::LodestoneTracker(
+            LodestoneTracker::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::FireworkExplosion => Ok(ItemComponent::FireworkExplosion(
+            FireworkExplosion::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::Fireworks => Ok(ItemComponent::Fireworks(Fireworks::decode(
             reader,
             &NetDecodeOpts::None,
@@ -1111,18 +1087,16 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::BannerPatterns => Ok(ItemComponent::BannerPatterns(LengthPrefixedVec::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::BannerPatterns => Ok(ItemComponent::BannerPatterns(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::BaseColor => Ok(ItemComponent::BaseColor(DyeColor::decode(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::PotDecorations => Ok(ItemComponent::PotDecorations(LengthPrefixedVec::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::PotDecorations => Ok(ItemComponent::PotDecorations(
+            LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::Container => Ok(ItemComponent::Container(LengthPrefixedVec::decode(
             reader,
             &NetDecodeOpts::None,
@@ -1147,7 +1121,9 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::SulfurCubeContent => Ok(ItemComponent::SulfurCubeContent(decode_box(reader)?)),
+        ItemComponentKind::SulfurCubeContent => {
+            Ok(ItemComponent::SulfurCubeContent(decode_box(reader)?))
+        }
         ItemComponentKind::VillagerVariant => Ok(ItemComponent::VillagerVariant(VarInt::decode(
             reader,
             &NetDecodeOpts::None,
@@ -1176,18 +1152,15 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::TropicalFishPattern => Ok(ItemComponent::TropicalFishPattern(VarInt::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::TropicalFishBaseColor => Ok(ItemComponent::TropicalFishBaseColor(DyeColor::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
-        ItemComponentKind::TropicalFishPatternColor => Ok(ItemComponent::TropicalFishPatternColor(DyeColor::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::TropicalFishPattern => Ok(ItemComponent::TropicalFishPattern(
+            VarInt::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::TropicalFishBaseColor => Ok(ItemComponent::TropicalFishBaseColor(
+            DyeColor::decode(reader, &NetDecodeOpts::None)?,
+        )),
+        ItemComponentKind::TropicalFishPatternColor => Ok(ItemComponent::TropicalFishPatternColor(
+            DyeColor::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::MooshroomVariant => Ok(ItemComponent::MooshroomVariant(VarInt::decode(
             reader,
             &NetDecodeOpts::None,
@@ -1216,10 +1189,9 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::ChickenSoundVariant => Ok(ItemComponent::ChickenSoundVariant(VarInt::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::ChickenSoundVariant => Ok(ItemComponent::ChickenSoundVariant(
+            VarInt::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::FrogVariant => Ok(ItemComponent::FrogVariant(VarInt::decode(
             reader,
             &NetDecodeOpts::None,
@@ -1240,10 +1212,9 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::ZombieNautilusVariant => Ok(ItemComponent::ZombieNautilusVariant(VarInt::decode(
-            reader,
-            &NetDecodeOpts::None,
-        )?)),
+        ItemComponentKind::ZombieNautilusVariant => Ok(ItemComponent::ZombieNautilusVariant(
+            VarInt::decode(reader, &NetDecodeOpts::None)?,
+        )),
         ItemComponentKind::CatVariant => Ok(ItemComponent::CatVariant(VarInt::decode(
             reader,
             &NetDecodeOpts::None,

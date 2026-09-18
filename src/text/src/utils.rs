@@ -48,7 +48,9 @@ macro_rules! make_setters {
 }
 
 // TODO: better api for custom colors
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, NBTSerialize, Encode, Decode, TypeHash)]
+#[derive(
+    Serialize, Deserialize, Debug, PartialEq, Clone, NBTSerialize, Encode, Decode, TypeHash,
+)]
 #[serde(untagged)]
 #[nbt(tag_type = 8)]
 pub enum Color {
@@ -89,7 +91,9 @@ pub enum NamedColor {
 
 /// The font of the text component.
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode, TypeHash)]
+#[derive(
+    Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode, TypeHash,
+)]
 #[nbt(tag_type = 8, tag = "untagged")]
 pub enum Font {
     /// The default font.
@@ -122,7 +126,9 @@ impl From<&str> for Font {
 
 /// The click event of the text component
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode, TypeHash)]
+#[derive(
+    Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode, TypeHash,
+)]
 #[serde(
     tag = "action",
     content = "value",

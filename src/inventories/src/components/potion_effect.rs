@@ -1,4 +1,3 @@
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;

@@ -3,7 +3,6 @@ use crate::decode::{NetDecode, NetDecodeOpts};
 use crate::encode::errors::NetEncodeError;
 use crate::encode::{NetEncode, NetEncodeOpts};
 use crate::net_types::var_int::VarInt;
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};

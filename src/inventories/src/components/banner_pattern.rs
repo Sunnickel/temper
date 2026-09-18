@@ -1,5 +1,4 @@
 use super::DyeColor;
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use temper_codec::net_types::id_or_inline::IdOr;
 use temper_macros::{NetDecode, NetEncode};

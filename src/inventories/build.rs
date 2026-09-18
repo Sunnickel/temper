@@ -59,9 +59,9 @@ fn collect_component_variants(
         .map(|variant| {
             let ident = variant.ident.to_string();
             let key = registry_key(&ident);
-            let id = *registry
-                .get(&key)
-                .unwrap_or_else(|| panic!("ItemComponent::{ident} maps to missing registry key {key}"));
+            let id = *registry.get(&key).unwrap_or_else(|| {
+                panic!("ItemComponent::{ident} maps to missing registry key {key}")
+            });
 
             if !seen_keys.insert(key.clone()) {
                 panic!("duplicate data component registry key {key}");

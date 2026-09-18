@@ -1,4 +1,4 @@
-use crate::components::{decode_component_value, ItemComponent};
+use crate::components::{ItemComponent, decode_component_value};
 use crate::item::ItemID;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -81,11 +81,7 @@ impl NetDecode for ItemStackTemplate {
 }
 
 impl NetEncode for ItemStackTemplate {
-    fn encode<W: Write>(
-        &self,
-        writer: &mut W,
-        opts: &NetEncodeOpts,
-    ) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
         self.item_id.encode(writer, opts)?;
         self.count.encode(writer, opts)?;
         encode_data_component_patch(

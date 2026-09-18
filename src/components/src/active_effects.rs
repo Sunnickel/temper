@@ -1,5 +1,4 @@
 use bevy_ecs::prelude::Component;
-use bitcode_derive::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use type_hash::TypeHash;

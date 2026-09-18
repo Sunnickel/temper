@@ -4,7 +4,6 @@ use crate::decode::errors::NetDecodeError;
 use crate::decode::{NetDecode, NetDecodeOpts};
 use crate::encode::errors::NetEncodeError;
 use crate::encode::{NetEncode, NetEncodeOpts};
-use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::io::{Read, Write};
