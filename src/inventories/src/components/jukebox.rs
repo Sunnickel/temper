@@ -1,5 +1,6 @@
 use super::{SoundEvent, encode_text_component};
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
@@ -7,7 +8,7 @@ use temper_codec::net_types::id_or_inline::IdOr;
 use temper_codec::net_types::var_int::VarInt;
 use temper_macros::NetDecode;
 use temper_text::TextComponent;
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetDecode)]
 pub struct JukeboxSong {
     pub sound_event: IdOr<SoundEvent>,
     pub description: TextComponent,
@@ -16,7 +17,11 @@ pub struct JukeboxSong {
 }
 
 impl NetEncode for JukeboxSong {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         self.sound_event.encode(writer, &NetEncodeOpts::None)?;
         encode_text_component(&self.description, writer, &NetEncodeOpts::None)?;
         self.duration.encode(writer, &NetEncodeOpts::None)?;

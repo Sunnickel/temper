@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use type_hash::TypeHash;
 
-#[derive(Component, Clone, Copy, Default, Decode, Encode, TypeHash, Serialize, Deserialize)]
+#[derive(Component, Clone, Copy, Default, TypeHash, Serialize, Deserialize)]
 pub struct Rotation {
     pub yaw: f32,
     pub pitch: f32,

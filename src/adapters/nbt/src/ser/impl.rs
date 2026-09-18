@@ -161,10 +161,14 @@ impl NBTSerializable for Uuid {
 
 impl NBTSerializable for u128 {
     fn serialize<W: Write>(&self, buf: &mut W, options: &NBTSerializeOptions<'_>) {
-         Uuid::from_u128(*self).serialize(buf, options)
+        Uuid::from_u128(*self).serialize(buf, options)
     }
 
-    async fn serialize_async<W: AsyncWrite + Unpin>(&self, buf: &mut W, options: &NBTSerializeOptions<'_>) {
+    async fn serialize_async<W: AsyncWrite + Unpin>(
+        &self,
+        buf: &mut W,
+        options: &NBTSerializeOptions<'_>,
+    ) {
         Uuid::from_u128(*self).serialize_async(buf, options).await
     }
 

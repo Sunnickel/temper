@@ -12,6 +12,7 @@ uuid = { workspace = true }
 tokio = { workspace = true }
 bitcode = { workspace = true }
 type_hash = { workspace = true }
+serde = { workspace = true }
 
 [lints]
 workspace = true

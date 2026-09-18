@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use type_hash::TypeHash;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, Decode, Encode, TypeHash, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, TypeHash, Default, Eq, PartialEq)]
 pub enum BossbarSenderState {
     Additive,
     Subtractive,

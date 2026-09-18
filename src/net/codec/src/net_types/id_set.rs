@@ -4,9 +4,10 @@ use crate::encode::errors::NetEncodeError;
 use crate::encode::{NetEncode, NetEncodeOpts};
 use crate::net_types::var_int::VarInt;
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
-#[derive(Hash, PartialEq, Debug, Clone, Encode, Decode)]
+#[derive(Hash, PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub enum IDSet {
     Indirect(String),
     Direct(Vec<VarInt>),

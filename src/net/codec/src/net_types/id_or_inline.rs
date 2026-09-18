@@ -4,9 +4,10 @@ use crate::encode::errors::NetEncodeError;
 use crate::encode::{NetEncode, NetEncodeOpts};
 use crate::net_types::var_int::VarInt;
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IdOr<T> {
     Id(VarInt),
     Inline(T),
@@ -78,8 +79,7 @@ impl<T> IdOr<T> {
     }
 }
 
-impl<T> From<T> for IdOr<T>
-{
+impl<T> From<T> for IdOr<T> {
     fn from(value: T) -> Self {
         Self::Inline(value)
     }

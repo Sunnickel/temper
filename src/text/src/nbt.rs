@@ -1,6 +1,4 @@
-use crate::{
-    ClickEvent, Color, Font, HoverEvent, NamedColor, TextComponent, TextContent,
-};
+use crate::{ClickEvent, Color, Font, HoverEvent, NamedColor, TextComponent, TextContent};
 use std::io::Read;
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -107,7 +105,9 @@ impl<'a> FromNbt<'a> for HoverEvent {
         let value = required_element(element, "value")?;
 
         match action.as_str() {
-            "show_text" => Ok(Self::ShowText(Box::<TextComponent>::from_nbt(tapes, value)?)),
+            "show_text" => Ok(Self::ShowText(Box::<TextComponent>::from_nbt(
+                tapes, value,
+            )?)),
             "show_item" => Ok(Self::ShowItem {
                 id: required(tapes, value, "id")?,
                 count: required(tapes, value, "count")?,

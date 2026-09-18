@@ -5,6 +5,7 @@ use crate::encode::{NetEncode, NetEncodeOpts};
 use crate::net_types::NetTypesError;
 use bitcode::{Decode, Encode};
 use deepsize::DeepSizeOf;
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::io::{Read, Write};
 use tokio::io::AsyncRead;
@@ -13,7 +14,18 @@ use tokio::io::{AsyncReadExt, AsyncWrite};
 use type_hash::TypeHash;
 
 #[derive(
-    Debug, Encode, Decode, Clone, DeepSizeOf, PartialEq, Eq, PartialOrd, Ord, Copy, Hash, TypeHash,
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    DeepSizeOf,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Copy,
+    Hash,
+    TypeHash,
 )]
 pub struct VarInt(pub i32);
 

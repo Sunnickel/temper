@@ -1,4 +1,5 @@
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use type_hash::TypeHash;
 
@@ -6,7 +7,7 @@ pub mod player;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Encode, Decode, TypeHash)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize, TypeHash)]
 pub enum Permissions {
     ALL,
 
@@ -19,7 +20,7 @@ pub enum Permissions {
     DeOp,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Encode, Decode, TypeHash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, TypeHash)]
 pub enum Access {
     Allow,
     Deny,

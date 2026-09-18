@@ -22,6 +22,7 @@ pub use trim::{Trim, TrimMaterial, TrimMaterialOverride, TrimPattern};
 
 use crate::slot::InventorySlot;
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -68,7 +69,7 @@ macro_rules! impl_discriminant_net_decode {
     };
 }
 
-#[derive(Debug, Clone, PartialEq, Discriminant)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Discriminant)]
 pub enum ItemComponent {
     CustomData(NbtBlob),
     MaxStackSize(VarInt),
@@ -227,7 +228,7 @@ impl Default for ItemComponent {
     }
 }
 
-#[derive(Discriminant, Clone, Debug, PartialEq, Encode, Decode)]
+#[derive(Discriminant, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Rarity {
     Common,
     Uncommon,
@@ -243,13 +244,13 @@ impl_discriminant_net_decode!(Rarity {
     3 => Rarity::Epic,
 });
 
-#[derive(NetEncode, NetDecode, PartialEq, Debug, Clone, Encode, Decode)]
+#[derive(NetEncode, NetDecode, PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct Enchantment {
     pub type_id: VarInt,
     pub level: VarInt,
 }
 
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct AttributeModifier {
     pub attribute_id: VarInt,
     pub modifier_id: String,
@@ -258,7 +259,7 @@ pub struct AttributeModifier {
     pub slot: AttributeModifierSlot,
 }
 
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum AttributeModifierOperation {
     Add,
     MultiplyBase,
@@ -271,7 +272,7 @@ impl_discriminant_net_decode!(AttributeModifierOperation {
     1 => AttributeModifierOperation::MultiplyBase,
     2 => AttributeModifierOperation::MultiplyTotal,
 });
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum AttributeModifierSlot {
     Any,
     MainHand,
@@ -299,7 +300,7 @@ impl_discriminant_net_decode!(AttributeModifierSlot {
     9 => AttributeModifierSlot::Body,
 });
 
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct CustomModelData {
     pub floats: LengthPrefixedVec<f32>,
     pub flags: LengthPrefixedVec<bool>,
@@ -307,18 +308,18 @@ pub struct CustomModelData {
     pub colors: LengthPrefixedVec<i32>,
 }
 
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct TooltipDisplay {
     pub hide_tooltip: bool,
     pub hidden_components: LengthPrefixedVec<VarInt>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct Food {
     pub nutrition: VarInt,
     pub saturation_modifier: f32,
     pub can_always_eat: bool,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct Consumable {
     pub consume_seconds: f32,
     pub animation: ConsumeAnimation,
@@ -326,7 +327,7 @@ pub struct Consumable {
     pub has_consume_particles: bool,
     pub effects: LengthPrefixedVec<ConsumeEffect>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum ConsumeAnimation {
     None,
     Eat,
@@ -353,18 +354,18 @@ impl_discriminant_net_decode!(ConsumeAnimation {
     8 => ConsumeAnimation::TootHorn,
     9 => ConsumeAnimation::Brush,
 });
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct UseCooldown {
     pub seconds: f32,
     pub cooldown_group: PrefixedOptional<String>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct UseEffects {
     pub can_sprint: bool,
     pub interact_vibrations: bool,
     pub speed_multiplier: f32,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct AttackRange {
     pub min_reach: f32,
     pub max_reach: f32,
@@ -373,25 +374,25 @@ pub struct AttackRange {
     pub hitbox_margin: f32,
     pub mob_factor: f32,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct Weapon {
     pub damage_per_attack: VarInt,
     pub disable_blocking_for: f32,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct Tool {
     pub rules: LengthPrefixedVec<ToolRule>,
     pub default_mining_speed: f32,
     pub damage_per_block: VarInt,
     pub can_destroy_blocks_in_creative: bool,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct ToolRule {
     pub blocks: IDSet,
     pub speed: PrefixedOptional<f32>,
     pub correct_drop_for_blocks: PrefixedOptional<bool>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct Equippable {
     pub slot: EquippableSlot,
     pub equip_sound: IdOr<SoundEvent>,
@@ -404,7 +405,7 @@ pub struct Equippable {
     pub can_be_sheared: bool,
     pub shearing_sound: IdOr<SoundEvent>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum EquippableSlot {
     MainHand,
     Feet,
@@ -425,7 +426,7 @@ impl_discriminant_net_decode!(EquippableSlot {
     5 => EquippableSlot::OffHand,
     6 => EquippableSlot::Body,
 });
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct BlocksAttacks {
     pub block_delay_seconds: f32,
     pub disable_cooldown_scale: f32,
@@ -437,14 +438,14 @@ pub struct BlocksAttacks {
     pub block_sound: PrefixedOptional<IdOr<SoundEvent>>,
     pub disable_sound: PrefixedOptional<IdOr<SoundEvent>>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct DamageReduction {
     pub horizontal_blocking_angle: f32,
     pub r#type: PrefixedOptional<IDSet>,
     pub base: f32,
     pub factor: f32,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum MapPostProcessing {
     Lock,
     Scale,
@@ -455,24 +456,24 @@ impl_discriminant_net_decode!(MapPostProcessing {
     0 => MapPostProcessing::Lock,
     1 => MapPostProcessing::Scale,
 });
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct SuspiciousStewEffect {
     pub type_id: VarInt,
     pub duration: VarInt,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct PotionContents {
     pub potion_id: PrefixedOptional<VarInt>,
     pub custom_color: PrefixedOptional<i32>,
     pub custom_effects: LengthPrefixedVec<PotionEffect>,
     pub custom_name: PrefixedOptional<String>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct WritableBookPage {
     pub raw_content: String,
     pub filtered_content: PrefixedOptional<String>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetDecode)]
 pub struct WrittenBookContent {
     pub raw_title: String,
     pub filtered_title: PrefixedOptional<String>,
@@ -481,34 +482,34 @@ pub struct WrittenBookContent {
     pub pages: LengthPrefixedVec<WrittenBookPage>,
     pub resolved: bool,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetDecode)]
 pub struct WrittenBookPage {
     pub raw_content: TextComponent,
     pub filtered_content: PrefixedOptional<TextComponent>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct EntityData {
     pub entity_type: VarInt,
     pub data: NbtBlob,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct BlockEntityData {
     pub block_entity_type: VarInt,
     pub data: NbtBlob,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct PiercingWeapon {
     pub deals_knockback: bool,
     pub dismounts: bool,
     pub sound: PrefixedOptional<SoundEvent>,
     pub hit_sound: PrefixedOptional<SoundEvent>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct SwingAnimation {
     pub r#type: SwingAnimationType,
     pub duration: VarInt,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum SwingAnimationType {
     None,
     Whack,
@@ -521,7 +522,7 @@ impl_discriminant_net_decode!(SwingAnimationType {
     1 => SwingAnimationType::Whack,
     2 => SwingAnimationType::Stab,
 });
-#[derive(PartialEq, Debug, Clone, Encode, Decode, Discriminant)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant)]
 pub enum DyeColor {
     White,
     Orange,
@@ -560,24 +561,24 @@ impl_discriminant_net_decode!(DyeColor {
     14 => DyeColor::Red,
     15 => DyeColor::Black,
 });
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode)]
 pub struct LodestoneTracker {
     pub has_global_position: bool,
     pub dimension: Option<String>,
     pub position: Option<NetworkPosition>,
     pub tracked: bool,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct SoundEvent {
     pub sound_id: String,
     pub fixed_range: PrefixedOptional<f32>,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct BlockStateProperty {
     pub name: String,
     pub value: String,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode, NetEncode, NetDecode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode)]
 pub struct Bee {
     pub entity_type: VarInt,
     pub entity_data: NbtBlob,

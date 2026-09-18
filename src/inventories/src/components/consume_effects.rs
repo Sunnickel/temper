@@ -1,5 +1,6 @@
 use crate::components::potion_effect::PotionEffect;
 use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
 use temper_codec::decode::{NetDecode, NetDecodeOpts};
@@ -7,12 +8,12 @@ use temper_codec::encode::errors::NetEncodeError;
 use temper_codec::encode::{NetEncode, NetEncodeOpts};
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::var_int::VarInt;
-#[derive(PartialEq, Debug, Clone, Encode, Decode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct ConsumeEffect {
     pub type_id: VarInt,
     pub data: ConsumeEffectData,
 }
-#[derive(PartialEq, Debug, Clone, Encode, Decode)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub enum ConsumeEffectData {
     ApplyEffects {
         effects: LengthPrefixedVec<PotionEffect>,
@@ -21,7 +22,11 @@ pub enum ConsumeEffectData {
 }
 
 impl NetEncode for ConsumeEffectData {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         match self {
             Self::ApplyEffects {
                 effects,
@@ -35,7 +40,11 @@ impl NetEncode for ConsumeEffectData {
 }
 
 impl NetEncode for ConsumeEffect {
-    fn encode<W: Write>(&self, writer: &mut W, _opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
+    fn encode<W: Write>(
+        &self,
+        writer: &mut W,
+        _opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
         self.type_id.encode(writer, &NetEncodeOpts::None)?;
         self.data.encode(writer, &NetEncodeOpts::None)
     }
@@ -51,10 +60,7 @@ impl NetDecode for ConsumeEffect {
 }
 
 impl ConsumeEffectData {
-    fn decode_for_type<R: Read>(
-        type_id: i32,
-        reader: &mut R,
-    ) -> Result<Self, NetDecodeError> {
+    fn decode_for_type<R: Read>(type_id: i32, reader: &mut R) -> Result<Self, NetDecodeError> {
         match type_id {
             0 => Ok(Self::ApplyEffects {
                 effects: LengthPrefixedVec::decode(reader, &NetDecodeOpts::None)?,

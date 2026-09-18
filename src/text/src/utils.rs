@@ -61,7 +61,9 @@ impl From<NamedColor> for Color {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize, Encode, Decode)]
+#[derive(
+    Serialize, Deserialize, Debug, PartialEq, Clone, Default, NBTSerialize, Encode, Decode,
+)]
 #[serde(rename_all(serialize = "snake_case"))]
 #[nbt(tag_type = 8, tag = "untagged", rename_all = "snake_case")]
 pub enum NamedColor {
@@ -146,7 +148,7 @@ pub enum ClickEvent {
 
 /// The hover event of the text component
 ///
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize, Encode, Decode)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, NBTSerialize)]
 #[serde(
     tag = "action",
     content = "value",

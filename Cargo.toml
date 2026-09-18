@@ -222,7 +222,7 @@ serde = { version = "1.0.229", features = ["derive", "std", "rc"] }
 serde_json = "1.0.151"
 serde_derive = "1.0.229"
 base64 = "0.23.1"
-bitcode = { version = "0.6.9", features = ["uuid"] }
+bitcode = { version = "0.6.9", features = ["serde", "uuid"] }
 bitcode_derive = "0.6.9"
 toml = "1.1.4"
 craftflow-nbt = "2.1.0"
