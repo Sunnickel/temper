@@ -9,7 +9,7 @@ use temper_codec::net_types::id_set::IDSet;
 use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;
-use temper_macros::{Discriminant, NetDecode, NetEncode};
+use temper_macros::{Discriminant, InverseDiscriminant, NetDecode, NetEncode};
 use temper_nbt::blob::NbtBlob;
 use type_hash::TypeHash;
 
@@ -54,7 +54,9 @@ pub struct PartialDataComponentMatcher {
     pub predicate_type: PartialDataComponentPredicateType,
     pub predicate: NbtBlob,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum PartialDataComponentPredicateType {
     Damage,
     Enchantments,
@@ -116,23 +118,8 @@ impl NetEncode for PartialDataComponentPredicateType {
 
 impl NetDecode for PartialDataComponentPredicateType {
     fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
-        match VarInt::decode(reader, opts)?.0 {
-            0 => Ok(Self::Damage),
-            1 => Ok(Self::Enchantments),
-            2 => Ok(Self::StoredEnchantments),
-            3 => Ok(Self::PotionContents),
-            4 => Ok(Self::CustomData),
-            5 => Ok(Self::Container),
-            6 => Ok(Self::BundleContents),
-            7 => Ok(Self::FireworkExplosion),
-            8 => Ok(Self::Fireworks),
-            9 => Ok(Self::WritableBookContent),
-            10 => Ok(Self::WrittenBookContent),
-            11 => Ok(Self::AttributeModifiers),
-            12 => Ok(Self::Trim),
-            13 => Ok(Self::JukeboxPlayable),
-            _ => Err(NetDecodeError::InvalidEnumVariant),
-        }
+        Self::from_discriminant(VarInt::decode(reader, opts)?)
+            .ok_or(NetDecodeError::InvalidEnumVariant)
     }
 }
 
