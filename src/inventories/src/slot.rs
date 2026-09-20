@@ -1,4 +1,4 @@
-use crate::components::{ItemComponent, decode_component_value};
+use crate::components::{decode_component_value, ItemComponent};
 use crate::item::ItemID;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -19,15 +19,6 @@ pub struct InventorySlot {
     pub components_to_remove: Option<Vec<VarInt>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypeHash)]
-pub struct ItemStackTemplate {
-    pub item_id: ItemID,
-    pub count: VarInt,
-    #[type_hash(foreign_type)]
-    pub components_to_add: Option<Vec<ItemComponent>>,
-    pub components_to_remove: Option<Vec<VarInt>>,
-}
-
 impl InventorySlot {
     pub fn empty() -> Self {
         Self {
@@ -38,7 +29,7 @@ impl InventorySlot {
         }
     }
 
-    /// Creative mode does stuff slightly differently because of course it does
+    /// Decodes the creative inventory slot format, where component values are length-prefixed.
     pub fn decode_creative_mode_slot<R: Read>(
         reader: &mut R,
         opts: &NetDecodeOpts,
@@ -62,33 +53,59 @@ impl InventorySlot {
             })
         }
     }
-}
 
-impl NetDecode for ItemStackTemplate {
-    fn decode<R: Read>(reader: &mut R, opts: &NetDecodeOpts) -> Result<Self, NetDecodeError> {
+    /// Decodes the non-optional item stack format used inside item components because it just has 
+    /// to be special. Mojang count ur fuckin days.
+    pub fn decode_template<R: Read>(
+        reader: &mut R,
+        opts: &NetDecodeOpts,
+    ) -> Result<Self, NetDecodeError> {
         let item_id = ItemID::decode(reader, opts)?;
         let count = VarInt::decode(reader, opts)?;
         let (components_to_add, components_to_remove) =
             decode_data_component_patch(reader, opts, false)?;
 
+        if count.0 <= 0 {
+            return Ok(Self {
+                count: VarInt::new(0),
+                ..Default::default()
+            });
+        }
+
         Ok(Self {
-            item_id,
             count,
+            item_id: Some(item_id),
             components_to_add: Some(components_to_add),
             components_to_remove: Some(components_to_remove),
         })
     }
-}
 
-impl NetEncode for ItemStackTemplate {
-    fn encode<W: Write>(&self, writer: &mut W, opts: &NetEncodeOpts) -> Result<(), NetEncodeError> {
-        self.item_id.encode(writer, opts)?;
+    /// Encodes the non-optional item stack format used inside item components. See above for 
+    /// threats to mojang
+    pub fn encode_template<W: Write>(
+        &self,
+        writer: &mut W,
+        opts: &NetEncodeOpts,
+    ) -> Result<(), NetEncodeError> {
+        match &self.item_id {
+            Some(item_id) => item_id.encode(writer, opts)?,
+            None => ItemID::new(0).encode(writer, opts)?,
+        }
+
         self.count.encode(writer, opts)?;
         encode_data_component_patch(
             writer,
             opts,
-            self.components_to_add.as_deref(),
-            self.components_to_remove.as_deref(),
+            if self.count.0 <= 0 {
+                None
+            } else {
+                self.components_to_add.as_deref()
+            },
+            if self.count.0 <= 0 {
+                None
+            } else {
+                self.components_to_remove.as_deref()
+            },
         )
     }
 }

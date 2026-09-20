@@ -20,7 +20,7 @@ pub use painting_variant::PaintingVariant;
 pub use potion_effect::PotionEffect;
 pub use trim::{Trim, TrimMaterial, TrimMaterialOverride, TrimPattern};
 
-use crate::slot::{InventorySlot, ItemStackTemplate};
+use crate::slot::InventorySlot;
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
 use temper_codec::decode::errors::NetDecodeError;
@@ -98,7 +98,7 @@ pub enum ItemComponent {
 
     Consumable(Consumable),
 
-    UseRemainder(Box<ItemStackTemplate>),
+    UseRemainder(Box<InventorySlot>),
     UseCooldown(UseCooldown),
     UseEffects(UseEffects),
     MinimumAttackCharge(f32),
@@ -648,7 +648,9 @@ fn encode_component_value<W: Write>(
         ItemComponent::IntangibleProjectile(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::Food(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::Consumable(value) => value.encode(writer, &NetEncodeOpts::None),
-        ItemComponent::UseRemainder(value) => value.as_ref().encode(writer, &NetEncodeOpts::None),
+        ItemComponent::UseRemainder(value) => {
+            value.as_ref().encode_template(writer, &NetEncodeOpts::None)
+        }
         ItemComponent::UseCooldown(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::UseEffects(value) => value.encode(writer, &NetEncodeOpts::None),
         ItemComponent::MinimumAttackCharge(value) => value.encode(writer, &NetEncodeOpts::None),
@@ -919,7 +921,9 @@ pub fn decode_component_value<R: Read>(
             reader,
             &NetDecodeOpts::None,
         )?)),
-        ItemComponentKind::UseRemainder => Ok(ItemComponent::UseRemainder(decode_box(reader)?)),
+        ItemComponentKind::UseRemainder => Ok(ItemComponent::UseRemainder(Box::new(
+            InventorySlot::decode_template(reader, &NetDecodeOpts::None)?,
+        ))),
         ItemComponentKind::UseCooldown => Ok(ItemComponent::UseCooldown(UseCooldown::decode(
             reader,
             &NetDecodeOpts::None,
