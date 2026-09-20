@@ -1,4 +1,4 @@
-use crate::components::{decode_component_value, ItemComponent};
+use crate::components::{ItemComponent, decode_component_value};
 use crate::item::ItemID;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -54,7 +54,7 @@ impl InventorySlot {
         }
     }
 
-    /// Decodes the non-optional item stack format used inside item components because it just has 
+    /// Decodes the non-optional item stack format used inside item components because it just has
     /// to be special. Mojang count ur fuckin days.
     pub fn decode_template<R: Read>(
         reader: &mut R,
@@ -80,7 +80,7 @@ impl InventorySlot {
         })
     }
 
-    /// Encodes the non-optional item stack format used inside item components. See above for 
+    /// Encodes the non-optional item stack format used inside item components. See above for
     /// threats to mojang
     pub fn encode_template<W: Write>(
         &self,
