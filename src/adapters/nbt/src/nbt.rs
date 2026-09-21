@@ -22,7 +22,7 @@ impl<T: NBTSerializable> NetEncode for NBT<T> {
         &self,
         writer: &mut W,
         _opts: &NetEncodeOpts,
-    ) -> std::result::Result<(), NetEncodeError> {
+    ) -> Result<(), NetEncodeError> {
         self.inner.serialize(writer, &NBTSerializeOptions::Network);
         Ok(())
     }
