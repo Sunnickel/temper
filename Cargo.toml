@@ -62,6 +62,7 @@ members = [
     "src/utils",
     "src/world",
     "src/world/db",
+    "src/world/density",
     "src/world/format",
     "src/world/gen",
     "src/world/gen/core",
@@ -69,7 +70,9 @@ members = [
     "src/world/gen/generators/normal",
     "src/world/gen/generators/skyblock",
     "src/world/gen/generators/superflat",
+    "src/world/gen/generators/vanilla",
     "src/world/gen/structures",
+    "src/world/noise",
     "tests",
 ]
 
@@ -153,6 +156,7 @@ temper-macros = { path = "src/base/macros" }
 temper-messages = { path = "src/messages" }
 temper-nbt = { path = "src/adapters/nbt" }
 temper-net-runtime = { path = "src/net/runtime" }
+temper-noise = { path = "src/world/noise" }
 temper-particles = { path = "src/particles" }
 temper-performance = { path = "src/performance" }
 temper-permissions = { path = "src/permissions" }
@@ -170,6 +174,7 @@ temper-utils = { path = "src/utils" }
 temper-world = { path = "src/world" }
 temper-world-format = { path = "src/world/format" }
 temper-world-gen = { path = "src/world/gen" }
+temper-blocks-generated = { path = "src/blocks/crates/generated" }
 
 # Asynchronous
 tokio = { version = "1.53.1", features = [
@@ -215,13 +220,14 @@ aes = { version = "0.8.4" }
 cfb8 = "0.8.1"
 sha1 = "0.11.0"
 num-bigint = "0.4.6"
+md5 = "0.8.1"
 
 # Encoding/Serialization
 serde = { version = "1.0.229", features = ["derive", "std", "rc"] }
 serde_json = "1.0.151"
 serde_derive = "1.0.229"
 base64 = "0.23.1"
-bitcode = "0.6.9"
+bitcode = { version = "0.6.9", features = ["serde", "uuid"] }
 bitcode_derive = "0.6.9"
 toml = "1.1.4"
 craftflow-nbt = "2.1.0"

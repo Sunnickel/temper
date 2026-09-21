@@ -97,6 +97,12 @@ mod primitives {
             Ok(Some(T::from_nbt(tapes, element)?))
         }
     }
+
+    impl<'a, T: FromNbt<'a>> FromNbt<'a> for Box<T> {
+        fn from_nbt(tapes: &NbtTape<'a>, element: &NbtTapeElement<'a>) -> Result<Self> {
+            Ok(Box::new(T::from_nbt(tapes, element)?))
+        }
+    }
 }
 
 mod maps {
