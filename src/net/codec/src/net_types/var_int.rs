@@ -39,6 +39,12 @@ mod adapters {
         }
     }
 
+    impl From<VarInt> for usize {
+        fn from(value: VarInt) -> Self {
+            value.0 as usize
+        }
+    }
+
     impl From<u8> for VarInt {
         fn from(value: u8) -> Self {
             Self::new(i32::from(value))

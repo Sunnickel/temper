@@ -33,7 +33,7 @@ use temper_codec::net_types::length_prefixed_vec::LengthPrefixedVec;
 use temper_codec::net_types::network_position::NetworkPosition;
 use temper_codec::net_types::prefixed_optional::PrefixedOptional;
 use temper_codec::net_types::var_int::VarInt;
-use temper_macros::{Discriminant, NetDecode, NetEncode};
+use temper_macros::{Discriminant, InverseDiscriminant, NetDecode, NetEncode};
 use temper_nbt::NBT;
 use temper_nbt::blob::NbtBlob;
 use temper_text::TextComponent;
@@ -54,16 +54,14 @@ macro_rules! impl_discriminant_net_encode {
 }
 
 macro_rules! impl_discriminant_net_decode {
-    ($type:ty { $($id:literal => $variant:path),+ $(,)? }) => {
+    ($type:ty) => {
         impl NetDecode for $type {
             fn decode<R: Read>(
                 reader: &mut R,
                 opts: &NetDecodeOpts,
             ) -> Result<Self, NetDecodeError> {
-                match VarInt::decode(reader, opts)?.0 {
-                    $($id => Ok($variant),)+
-                    _ => Err(NetDecodeError::InvalidEnumVariant),
-                }
+                Self::from_discriminant(VarInt::decode(reader, opts)?)
+                    .ok_or(NetDecodeError::InvalidEnumVariant)
             }
         }
     };
@@ -230,7 +228,9 @@ impl Default for ItemComponent {
 
 include!(concat!(env!("OUT_DIR"), "/item_component_ids.rs"));
 
-#[derive(Discriminant, Clone, Debug, PartialEq, Serialize, Deserialize, TypeHash)]
+#[derive(
+    Discriminant, InverseDiscriminant, Clone, Debug, PartialEq, Serialize, Deserialize, TypeHash,
+)]
 pub enum Rarity {
     Common,
     Uncommon,
@@ -239,12 +239,7 @@ pub enum Rarity {
 }
 
 impl_discriminant_net_encode!(Rarity);
-impl_discriminant_net_decode!(Rarity {
-    0 => Rarity::Common,
-    1 => Rarity::Uncommon,
-    2 => Rarity::Rare,
-    3 => Rarity::Epic,
-});
+impl_discriminant_net_decode!(Rarity);
 
 #[derive(NetEncode, NetDecode, PartialEq, Debug, Clone, Serialize, Deserialize, TypeHash)]
 pub struct Enchantment {
@@ -261,7 +256,9 @@ pub struct AttributeModifier {
     pub slot: AttributeModifierSlot,
 }
 
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum AttributeModifierOperation {
     Add,
     MultiplyBase,
@@ -269,12 +266,10 @@ pub enum AttributeModifierOperation {
 }
 
 impl_discriminant_net_encode!(AttributeModifierOperation);
-impl_discriminant_net_decode!(AttributeModifierOperation {
-    0 => AttributeModifierOperation::Add,
-    1 => AttributeModifierOperation::MultiplyBase,
-    2 => AttributeModifierOperation::MultiplyTotal,
-});
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+impl_discriminant_net_decode!(AttributeModifierOperation);
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum AttributeModifierSlot {
     Any,
     MainHand,
@@ -289,18 +284,7 @@ pub enum AttributeModifierSlot {
 }
 
 impl_discriminant_net_encode!(AttributeModifierSlot);
-impl_discriminant_net_decode!(AttributeModifierSlot {
-    0 => AttributeModifierSlot::Any,
-    1 => AttributeModifierSlot::MainHand,
-    2 => AttributeModifierSlot::OffHand,
-    3 => AttributeModifierSlot::Hand,
-    4 => AttributeModifierSlot::Feet,
-    5 => AttributeModifierSlot::Legs,
-    6 => AttributeModifierSlot::Chest,
-    7 => AttributeModifierSlot::Head,
-    8 => AttributeModifierSlot::Armor,
-    9 => AttributeModifierSlot::Body,
-});
+impl_discriminant_net_decode!(AttributeModifierSlot);
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct CustomModelData {
@@ -329,7 +313,9 @@ pub struct Consumable {
     pub has_consume_particles: bool,
     pub effects: LengthPrefixedVec<ConsumeEffect>,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum ConsumeAnimation {
     None,
     Eat,
@@ -344,18 +330,7 @@ pub enum ConsumeAnimation {
 }
 
 impl_discriminant_net_encode!(ConsumeAnimation);
-impl_discriminant_net_decode!(ConsumeAnimation {
-    0 => ConsumeAnimation::None,
-    1 => ConsumeAnimation::Eat,
-    2 => ConsumeAnimation::Drink,
-    3 => ConsumeAnimation::Block,
-    4 => ConsumeAnimation::Bow,
-    5 => ConsumeAnimation::Spear,
-    6 => ConsumeAnimation::Crossbow,
-    7 => ConsumeAnimation::Spyglass,
-    8 => ConsumeAnimation::TootHorn,
-    9 => ConsumeAnimation::Brush,
-});
+impl_discriminant_net_decode!(ConsumeAnimation);
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct UseCooldown {
     pub seconds: f32,
@@ -407,7 +382,9 @@ pub struct Equippable {
     pub can_be_sheared: bool,
     pub shearing_sound: IdOr<SoundEvent>,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum EquippableSlot {
     MainHand,
     Feet,
@@ -419,15 +396,7 @@ pub enum EquippableSlot {
 }
 
 impl_discriminant_net_encode!(EquippableSlot);
-impl_discriminant_net_decode!(EquippableSlot {
-    0 => EquippableSlot::MainHand,
-    1 => EquippableSlot::Feet,
-    2 => EquippableSlot::Legs,
-    3 => EquippableSlot::Chest,
-    4 => EquippableSlot::Head,
-    5 => EquippableSlot::OffHand,
-    6 => EquippableSlot::Body,
-});
+impl_discriminant_net_decode!(EquippableSlot);
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct BlocksAttacks {
     pub block_delay_seconds: f32,
@@ -447,17 +416,16 @@ pub struct DamageReduction {
     pub base: f32,
     pub factor: f32,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum MapPostProcessing {
     Lock,
     Scale,
 }
 
 impl_discriminant_net_encode!(MapPostProcessing);
-impl_discriminant_net_decode!(MapPostProcessing {
-    0 => MapPostProcessing::Lock,
-    1 => MapPostProcessing::Scale,
-});
+impl_discriminant_net_decode!(MapPostProcessing);
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, NetDecode, TypeHash)]
 pub struct SuspiciousStewEffect {
     pub type_id: VarInt,
@@ -511,7 +479,9 @@ pub struct SwingAnimation {
     pub r#type: SwingAnimationType,
     pub duration: VarInt,
 }
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum SwingAnimationType {
     None,
     Whack,
@@ -519,12 +489,10 @@ pub enum SwingAnimationType {
 }
 
 impl_discriminant_net_encode!(SwingAnimationType);
-impl_discriminant_net_decode!(SwingAnimationType {
-    0 => SwingAnimationType::None,
-    1 => SwingAnimationType::Whack,
-    2 => SwingAnimationType::Stab,
-});
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, TypeHash)]
+impl_discriminant_net_decode!(SwingAnimationType);
+#[derive(
+    PartialEq, Debug, Clone, Serialize, Deserialize, Discriminant, InverseDiscriminant, TypeHash,
+)]
 pub enum DyeColor {
     White,
     Orange,
@@ -545,24 +513,7 @@ pub enum DyeColor {
 }
 
 impl_discriminant_net_encode!(DyeColor);
-impl_discriminant_net_decode!(DyeColor {
-    0 => DyeColor::White,
-    1 => DyeColor::Orange,
-    2 => DyeColor::Magenta,
-    3 => DyeColor::LightBlue,
-    4 => DyeColor::Yellow,
-    5 => DyeColor::Lime,
-    6 => DyeColor::Pink,
-    7 => DyeColor::Gray,
-    8 => DyeColor::LightGray,
-    9 => DyeColor::Cyan,
-    10 => DyeColor::Purple,
-    11 => DyeColor::Blue,
-    12 => DyeColor::Brown,
-    13 => DyeColor::Green,
-    14 => DyeColor::Red,
-    15 => DyeColor::Black,
-});
+impl_discriminant_net_decode!(DyeColor);
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize, NetEncode, TypeHash)]
 pub struct LodestoneTracker {
     pub has_global_position: bool,
