@@ -61,7 +61,7 @@ pub struct PlayerBundle {
     // Permissions
     pub permissions: PlayerPermission,
 
-    // Player Marker
+    // Markers
     pub player_marker: PlayerMarker,
 
     // Bossbar Sender

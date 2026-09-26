@@ -22,6 +22,7 @@ crossbeam-queue = { workspace = true }
 crossbeam-channel = { workspace = true }
 temper-permissions = { workspace = true }
 rand = { workspace = true }
+deref-derive ={ workspace = true }
 
 [lints]
 workspace = true
