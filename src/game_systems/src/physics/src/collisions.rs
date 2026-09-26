@@ -1,15 +1,14 @@
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
 use bevy_ecs::world::Mut;
+use bevy_math::Vec3A;
 use bevy_math::bounding::{Aabb3d, BoundingVolume, IntersectsVolume};
-use bevy_math::{IVec3, Vec3A};
 use temper_components::bounds::CollisionBounds;
 use temper_components::player::grounded::OnGround;
 use temper_components::player::position::Position;
-use temper_components::player::velocity::Velocity;
 use temper_core::block_properties;
 use temper_core::dimension::Dimension;
-use temper_core::pos::{BlockPos, ChunkBlockPos, ChunkPos};
+use temper_core::pos::BlockPos;
 use temper_entities::PhysicalRegistry;
 use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
@@ -17,12 +16,13 @@ use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
 use temper_state::{GlobalState, GlobalStateResource};
 use tracing::debug;
+use temper_components::player::old_position::OldPosition;
 
 type CollisionQueryItem<'a> = (
     Entity,
-    Mut<'a, Velocity>,
+    &'a OldPosition,
     Mut<'a, Position>,
-    &'a EntityMetadata,
+    Option<&'a EntityMetadata>,
     Option<&'a CollisionBounds>,
     Has<Baby>,
     Mut<'a, OnGround>,
@@ -34,22 +34,31 @@ pub fn handle(
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, mut vel, mut pos, metadata, collision_bounds, is_baby, mut grounded) in query {
-        let Some(physical) = registry.get_or_adult(metadata.protocol_id(), is_baby) else {
-            continue;
-        };
-        if pos.is_changed() || vel.is_changed() {
+    for (eid, mut old_pos, mut pos, metadata, collision_bounds, is_baby, mut grounded) in query {
+        if pos.is_changed() {
             let static_hitbox = if let Some(bounds) = collision_bounds {
                 bounds
             } else {
-                &physical.bounding_box
+                if let Some(meta) = metadata
+                    && let Some(physical) = registry.get_or_adult(meta.protocol_id(), is_baby)
+                {
+                    &physical.bounding_box
+                } else {
+                    debug!(
+                        "Entity {} has no collision bounds and no physical definition, skipping collision check",
+                        eid
+                    );
+                    continue;
+                }
             };
 
             // Velocity has already been applied, so we subtract current velocity to get the
             // position before velocity was applied
-            let next_hitbox = static_hitbox.translated_by(pos.as_vec3a());
-            let current_hitbox = static_hitbox.translated_by(pos.as_vec3a() - **vel);
+            let delta = (**pos - **old_pos).as_vec3a();
             
+            let next_hitbox = static_hitbox.translated_by(pos.as_vec3a() + delta);
+            let current_hitbox = static_hitbox.translated_by(pos.as_vec3a());
+
             if next_hitbox == current_hitbox {
                 continue;
             }
@@ -80,10 +89,10 @@ pub fn handle(
                 .min(hitbox_size.y)
                 .min(hitbox_size.z)
                 .max(f32::EPSILON);
-            let travel_distance = vel.length();
+            let travel_distance = delta.length();
             let step_count = (travel_distance / min_dimension).ceil().max(1.0) as u32;
 
-            let start_pos = pos.as_vec3a() - **vel;
+            let start_pos = pos.as_vec3a() - delta;
             let end_pos = pos.as_vec3a();
 
             let entity_hitboxes: Vec<_> = (0..=step_count)

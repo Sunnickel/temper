@@ -2,6 +2,7 @@ use bevy_ecs::prelude::{Commands, MessageWriter, Res};
 use bevy_math::Vec3A;
 use std::time::Instant;
 use temper_components::bounds::CollisionBounds;
+use temper_components::last_synced_position::LastSyncedPosition;
 use temper_components::player::bossbar_sender::BossbarSender;
 use temper_components::player::chunk_receiver::ChunkReceiver;
 use temper_components::player::entity_tracker::EntityTracker;
@@ -21,6 +22,7 @@ use temper_net_runtime::connection::DisconnectHandle;
 use temper_resources::new_conn::NewConnectionRecv;
 use temper_state::GlobalStateResource;
 use tracing::{error, info};
+use temper_components::player::velocity::Velocity;
 
 pub fn accept_new_connections(
     mut cmd: Commands,
@@ -60,14 +62,17 @@ pub fn accept_new_connections(
         );
 
         // --- 2. Build the PlayerBundle ---
+        let position = player_data.position.into();
         let player_bundle = PlayerBundle {
             identity: new_connection.player_identity.clone(),
             game_id: new_connection.game_id,
             abilities: player_data.abilities,
             player_properties: new_connection.player_properties,
             gamemode: GameModeComponent(player_data.gamemode),
-            position: player_data.position.into(),
+            position,
             rotation: player_data.rotation,
+            velocity: Velocity::zero(),
+            last_synced_position: LastSyncedPosition::from_position(&position),
             on_ground: OnGround::default(),
             chunk_receiver: ChunkReceiver::default(),
             inventory: player_data.inventory,

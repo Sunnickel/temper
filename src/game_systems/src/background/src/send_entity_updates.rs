@@ -26,13 +26,9 @@ pub fn handle(
     mut player_query: Query<(Entity, &StreamWriter, &EntityTracker)>,
     mut reader: MessageReader<SendEntityUpdate>,
 ) {
-    let mut entities_to_update = vec![];
-    for msg in reader.read() {
-        entities_to_update.push(msg.0);
-    }
-    for entity in entities_to_update {
+    for update in reader.read() {
         if let Ok((entity, pos, vel, rot, mut last_synced, game_id, grounded)) =
-            query.get_mut(entity)
+            query.get_mut(update.0)
         {
             if last_synced.0.distance(pos.coords) >= 8.0 {
                 let packet = TeleportEntityPacket {
@@ -92,7 +88,7 @@ pub fn handle(
         } else {
             warn!(
                 "Tried to send entity update for non-existent entity: {:?}",
-                entity
+                update.0
             );
         }
     }

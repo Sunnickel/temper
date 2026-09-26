@@ -1,6 +1,7 @@
 use crate::bounds::CollisionBounds;
 use crate::entity_identity::Identity;
 use crate::game_id::GameID;
+use crate::last_synced_position::LastSyncedPosition;
 use crate::player::bossbar_sender::BossbarSender;
 use crate::player::chunk_receiver::ChunkReceiver;
 use crate::player::entity_tracker::EntityTracker;
@@ -21,6 +22,7 @@ use crate::{
 use bevy_ecs::prelude::Bundle;
 use temper_inventories::{hotbar::Hotbar, inventory::Inventory};
 use temper_permissions::player::PlayerPermission;
+use crate::player::velocity::Velocity;
 
 /// A Bevy Bundle containing all components required for a player entity.
 /// This groups all 17+ components into a single, spawnable unit.
@@ -38,6 +40,8 @@ pub struct PlayerBundle {
     // Position/World
     pub position: Position,
     pub rotation: Rotation,
+    pub velocity: Velocity,
+    pub last_synced_position: LastSyncedPosition,
     pub on_ground: OnGround,
     pub chunk_receiver: ChunkReceiver,
     pub collision_bounds: CollisionBounds,
