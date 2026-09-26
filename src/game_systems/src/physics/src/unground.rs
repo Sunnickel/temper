@@ -9,7 +9,7 @@ use temper_entities::markers::HasCollisions;
 use temper_messages::BlockBrokenEvent;
 use temper_state::GlobalStateResource;
 use tracing::trace;
-
+use temper_core::pos::BlockPos;
 use super::collisions::is_solid_block;
 
 /// System that ungrounds entities when blocks are broken beneath them.
@@ -79,7 +79,7 @@ pub fn handle(
                             continue;
                         }
 
-                        let check_pos = IVec3::new(x, feet_y, z);
+                        let check_pos = BlockPos::of(x, feet_y, z);
                         if is_solid_block(&state.0, check_pos) {
                             has_support = true;
                             break;
