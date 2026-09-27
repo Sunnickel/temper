@@ -37,6 +37,7 @@ pub trait MobDefinition {
 
     const KIND: EntityTypeEnum;
     const PROFILE: MobProfile;
+    const NAME: &'static str;
 
     fn new(position: Position) -> Self::Bundle;
     fn clone_bundle(bundle: &Self::Bundle) -> Self::Bundle;
@@ -149,7 +150,9 @@ macro_rules! define_mob {
                 let spawn = <$spawn>::from_metadata(&metadata);
 
                 Self {
-                    identity: <$identity>::new(None),
+                    identity: <$identity>::new(Some(
+                        <$definition as $crate::mob_definition::MobDefinition>::NAME.to_owned(),
+                    )),
                     metadata,
                     combat,
                     spawn,
@@ -174,6 +177,8 @@ macro_rules! define_mob {
             pub fn profile(&self) -> $crate::mob_definition::MobProfile {
                 $crate::mob_definition::MobProfile::$profile
             }
+            
+            
         }
 
         pub struct $definition;
@@ -227,6 +232,7 @@ macro_rules! define_mob {
                 $crate::entity_types::EntityTypeEnum::$kind;
             const PROFILE: $crate::mob_definition::MobProfile =
                 $crate::mob_definition::MobProfile::$profile;
+            const NAME: &'static str = stringify!($kind);
 
             fn new(position: $position) -> Self::Bundle {
                 Self::Bundle::new(position)
@@ -388,6 +394,15 @@ macro_rules! define_mob_registry {
                     $(
                         Self::$variant(_) =>
                             <$definition as $crate::mob_definition::MobDefinition>::KIND,
+                    )+
+                }
+            }
+
+            pub const fn name(&self) -> &'static str {
+                match self {
+                    $(
+                        Self::$variant(_) =>
+                            <$definition as $crate::mob_definition::MobDefinition>::NAME,
                     )+
                 }
             }

@@ -40,6 +40,7 @@ pub struct PlayerBundle {
     // Position/World
     pub position: Position,
     pub rotation: Rotation,
+    /// Not really used since player physics are a pain to do server-side
     pub velocity: Velocity,
     pub last_synced_position: LastSyncedPosition,
     pub on_ground: OnGround,

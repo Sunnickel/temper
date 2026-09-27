@@ -1,3 +1,4 @@
+use std::time::Instant;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
 use bevy_ecs::world::Mut;
@@ -15,27 +16,36 @@ use temper_entities::components::EntityMetadata;
 use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
 use temper_state::{GlobalState, GlobalStateResource};
-use tracing::debug;
+use tracing::{debug, error};
+use temper_components::entity_identity::Identity;
 use temper_components::player::old_position::OldPosition;
+use temper_components::player::player_marker::PlayerMarker;
+use temper_components::player::velocity::Velocity;
+use temper_messages::particle::SendParticle;
 
 type CollisionQueryItem<'a> = (
     Entity,
-    &'a OldPosition,
+    Option<&'a OldPosition>,
     Mut<'a, Position>,
     Option<&'a EntityMetadata>,
+    Option<&'a Velocity>,
     Option<&'a CollisionBounds>,
     Has<Baby>,
     Mut<'a, OnGround>,
+    &'a Identity,
+    Has<PlayerMarker>
 );
 
 pub fn handle(
     query: Query<CollisionQueryItem, With<HasCollisions>>,
-    mut writer: MessageWriter<SendEntityUpdate>,
+    mut entity_updates_writer: MessageWriter<SendEntityUpdate>,
+    mut particle_writer: MessageWriter<SendParticle>,
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, mut old_pos, mut pos, metadata, collision_bounds, is_baby, mut grounded) in query {
+    for (eid, old_pos, mut pos, metadata, mut vel, collision_bounds, is_baby, mut grounded, identity, is_player) in query {
         if pos.is_changed() {
+            let start = Instant::now();
             let static_hitbox = if let Some(bounds) = collision_bounds {
                 bounds
             } else {
@@ -44,7 +54,7 @@ pub fn handle(
                 {
                     &physical.bounding_box
                 } else {
-                    debug!(
+                    debug!( 
                         "Entity {} has no collision bounds and no physical definition, skipping collision check",
                         eid
                     );
@@ -52,12 +62,41 @@ pub fn handle(
                 }
             };
 
-            // Velocity has already been applied, so we subtract current velocity to get the
-            // position before velocity was applied
-            let delta = (**pos - **old_pos).as_vec3a();
+            // This is really odd but for players velocity isn't really a thing so we calculate the 
+            // delta from their last position. For mobs though there is a velocity component, and 
+            // velocity has already been applied before figuring out collisions. So we have to do 
+            // different things for players vs non-players. This is stupid and should be fixed once
+            // serverside player physics are implemented properly.
             
-            let next_hitbox = static_hitbox.translated_by(pos.as_vec3a() + delta);
-            let current_hitbox = static_hitbox.translated_by(pos.as_vec3a());
+            let delta = if let Some(vel) = vel && !is_player {
+                **vel
+            } else if let Some(old_pos) = old_pos {
+                (**pos - **old_pos).as_vec3a()
+            } else {
+                error!(
+                    "Entity {} has no velocity and no old position, skipping collision check",
+                    eid
+                );
+                continue;
+            };
+            
+            let (current_hitbox, next_hitbox) = if let Some(vel) = vel && !is_player {
+                (
+                    static_hitbox.translated_by(pos.as_vec3a() - **vel),
+                    static_hitbox.translated_by(pos.as_vec3a()),
+                    )
+            } else if is_player {
+                (
+                    static_hitbox.translated_by(pos.as_vec3a()),
+                    static_hitbox.translated_by(pos.as_vec3a() + delta),
+                )
+            } else {
+                error!(
+                    "Entity {} has no velocity and not a player, skipping collision check",
+                    eid
+                );
+                continue;
+            };
 
             if next_hitbox == current_hitbox {
                 continue;
@@ -107,9 +146,12 @@ pub fn handle(
 
             let mut center_at_hit = None;
             let mut hit_block = None;
+            
+            let mut checked_blocks = 0u32;
 
             'hitboxes: for hitbox in entity_hitboxes {
                 for block_pos in &possible_hits {
+                    checked_blocks += 1;
                     let block_hitbox = Aabb3d {
                         min: block_pos.pos.as_vec3a(),
                         max: block_pos.pos.as_vec3a() + (1.0 - Vec3A::splat(f32::EPSILON)),
@@ -122,10 +164,12 @@ pub fn handle(
                 }
             }
             if let Some(collided_block) = hit_block {
-                debug!("Hit block at {}", collided_block)
+                debug!("{} Hit block at {}", identity.name.as_ref().expect("Entity has no name"), collided_block);
+                debug!("{} blocks checked in total for collide, took {:?}", checked_blocks, Instant::now() - start);
             }
+            
 
-            writer.write(SendEntityUpdate(eid));
+            entity_updates_writer.write(SendEntityUpdate(eid));
         }
     }
 }
