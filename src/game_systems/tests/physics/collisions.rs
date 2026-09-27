@@ -50,3 +50,45 @@ fn falling_entity_lands_when_velocity_step_crosses_floor() {
     assert_eq!(vel.vec.y, 0.0);
     assert!(grounded.0);
 }
+
+#[test]
+fn walking_entity_stops_flush_against_a_wall_on_a_partial_width_axis() {
+    let mut world = World::new();
+    let (state, _temp_dir) = create_test_state();
+
+    {
+        let mut chunk = state
+            .0
+            .world
+            .get_or_generate_mut(ChunkPos::new(0, 0), Dimension::Overworld)
+            .expect("Failed to create test chunk");
+        chunk.set_block(ChunkBlockPos::new(1, 64, 0), block!("stone"));
+    }
+
+    world.insert_resource(state);
+    world.insert_resource(PhysicalRegistry::new());
+    MessageRegistry::register_message::<SendEntityUpdate>(&mut world);
+
+    // Pig is 0.9 blocks wide (half-width 0.45), which doesn't divide evenly into whole
+    // blocks - this is what actually exercises the snapping math on a non-full-width axis.
+    let mut bundle = PigBundle::new(Position::new(0.0, 64.0, 0.5));
+    bundle.velocity = Velocity::new(2.0, 0.0, 0.0);
+
+    let entity = world.spawn((bundle, Pig, HasCollisions)).id();
+
+    let mut schedule = Schedule::default();
+    schedule.add_systems((velocity::handle, collisions::handle).chain());
+    schedule.run(&mut world);
+
+    let pos = world.get::<Position>(entity).unwrap();
+    let vel = world.get::<Velocity>(entity).unwrap();
+
+    // Wall's min face is at x=1.0, half-width is 0.45, so the pig should stop with its
+    // hitbox flush against the wall rather than snapping to a whole-block boundary.
+    assert!(
+        (pos.coords.x - 0.55).abs() < 1e-5,
+        "expected x flush against wall at 0.55, got {}",
+        pos.coords.x
+    );
+    assert_eq!(vel.vec.x, 0.0);
+}
