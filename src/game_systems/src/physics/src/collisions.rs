@@ -36,6 +36,8 @@ type CollisionQueryItem<'a> = (
     Has<PlayerMarker>
 );
 
+/// This whole thing is a complete mess since players have unreliable and largely unused velocity 
+/// but do have client-side collision prediction and mobs have velocities but no client-side collisions.
 pub fn handle(
     query: Query<CollisionQueryItem, With<HasCollisions>>,
     mut entity_updates_writer: MessageWriter<SendEntityUpdate>,

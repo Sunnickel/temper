@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::{Entity, MessageReader, MessageWriter, Query};
 use temper_components::game_id::GameID;
+use temper_components::player::old_position::OldPosition;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
 use temper_components::player::teleport_tracker::TeleportTracker;
@@ -19,6 +20,7 @@ pub fn teleport_entities(
         Option<&mut Rotation>,
         Option<&mut Velocity>,
         Option<&mut TeleportTracker>,
+        Option<&mut OldPosition>,
     )>,
     player_query: Query<(Entity, &StreamWriter)>,
     id_query: Query<&GameID>,
@@ -40,7 +42,7 @@ pub fn teleport_entities(
         };
 
         let is_player_target = {
-            let Ok((conn, mut pos, rotation, velocity, tracker)) =
+            let Ok((conn, mut pos, rotation, velocity, tracker, old_position)) =
                 target_query.get_mut(message_entity)
             else {
                 error!(
@@ -49,6 +51,10 @@ pub fn teleport_entities(
                 );
                 continue;
             };
+
+            if let Some(mut old_position) = old_position {
+                *old_position = OldPosition::from(message.position);
+            }
 
             if let Some(mut tracker) = tracker {
                 // Block movement tracking until the player has been teleported.
