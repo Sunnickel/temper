@@ -1,12 +1,16 @@
-use std::time::Instant;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
 use bevy_ecs::world::Mut;
 use bevy_math::Vec3A;
 use bevy_math::bounding::{Aabb3d, BoundingVolume, IntersectsVolume};
+use std::time::Instant;
 use temper_components::bounds::CollisionBounds;
+use temper_components::entity_identity::Identity;
 use temper_components::player::grounded::OnGround;
+use temper_components::player::old_position::OldPosition;
+use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::position::Position;
+use temper_components::player::velocity::Velocity;
 use temper_core::block_properties;
 use temper_core::dimension::Dimension;
 use temper_core::pos::BlockPos;
@@ -15,37 +19,50 @@ use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
 use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
+use temper_messages::particle::SendParticle;
 use temper_state::{GlobalState, GlobalStateResource};
 use tracing::{debug, error};
-use temper_components::entity_identity::Identity;
-use temper_components::player::old_position::OldPosition;
-use temper_components::player::player_marker::PlayerMarker;
-use temper_components::player::velocity::Velocity;
-use temper_messages::particle::SendParticle;
+use temper_components::player::gamemode::{GameModeComponent, GameMode};
 
 type CollisionQueryItem<'a> = (
     Entity,
     Option<&'a OldPosition>,
     Mut<'a, Position>,
     Option<&'a EntityMetadata>,
-    Option<&'a Velocity>,
+    Option<&'a mut Velocity>,
     Option<&'a CollisionBounds>,
+    Option<&'a GameModeComponent>,
     Has<Baby>,
     Mut<'a, OnGround>,
     &'a Identity,
-    Has<PlayerMarker>
+    Has<PlayerMarker>,
 );
 
-/// This whole thing is a complete mess since players have unreliable and largely unused velocity 
+/// This whole thing is a complete mess since players have unreliable and largely unused velocity
 /// but do have client-side collision prediction and mobs have velocities but no client-side collisions.
 pub fn handle(
     query: Query<CollisionQueryItem, With<HasCollisions>>,
     mut entity_updates_writer: MessageWriter<SendEntityUpdate>,
-    mut particle_writer: MessageWriter<SendParticle>,
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, old_pos, mut pos, metadata, mut vel, collision_bounds, is_baby, mut grounded, identity, is_player) in query {
+    for (
+        eid,
+        old_pos,
+        mut pos,
+        metadata,
+        vel,
+        collision_bounds,
+        gamemode,
+        is_baby,
+        mut grounded,
+        identity,
+        is_player,
+    ) in query
+    {
+        if let Some(gamemode) = gamemode && matches!(gamemode.0, GameMode::Spectator) {
+            continue;
+        }
         if pos.is_changed() {
             let start = Instant::now();
             let static_hitbox = if let Some(bounds) = collision_bounds {
@@ -56,7 +73,7 @@ pub fn handle(
                 {
                     &physical.bounding_box
                 } else {
-                    debug!( 
+                    debug!(
                         "Entity {} has no collision bounds and no physical definition, skipping collision check",
                         eid
                     );
@@ -64,14 +81,16 @@ pub fn handle(
                 }
             };
 
-            // This is really odd but for players velocity isn't really a thing so we calculate the 
-            // delta from their last position. For mobs though there is a velocity component, and 
-            // velocity has already been applied before figuring out collisions. So we have to do 
+            // This is really odd but for players velocity isn't really a thing so we calculate the
+            // delta from their last position. For mobs though there is a velocity component, and
+            // velocity has already been applied before figuring out collisions. So we have to do
             // different things for players vs non-players. This is stupid and should be fixed once
             // serverside player physics are implemented properly.
-            
-            let delta = if let Some(vel) = vel && !is_player {
-                **vel
+
+            let delta = if let Some(vel) = &vel
+                && !is_player
+            {
+                ***vel
             } else if let Some(old_pos) = old_pos {
                 (**pos - **old_pos).as_vec3a()
             } else {
@@ -81,12 +100,14 @@ pub fn handle(
                 );
                 continue;
             };
-            
-            let (current_hitbox, next_hitbox) = if let Some(vel) = vel && !is_player {
+
+            let (current_hitbox, next_hitbox) = if let Some(vel) = &vel
+                && !is_player
+            {
                 (
-                    static_hitbox.translated_by(pos.as_vec3a() - **vel),
+                    static_hitbox.translated_by(pos.as_vec3a() - ***vel),
                     static_hitbox.translated_by(pos.as_vec3a()),
-                    )
+                )
             } else if is_player {
                 (
                     static_hitbox.translated_by(pos.as_vec3a()),
@@ -136,22 +157,24 @@ pub fn handle(
             let start_pos = pos.as_vec3a() - delta;
             let end_pos = pos.as_vec3a();
 
-            let entity_hitboxes: Vec<_> = (0..=step_count)
+            let samples: Vec<Vec3A> = (0..=step_count)
                 .map(|step| {
                     let t = step as f32 / step_count as f32;
-                    let sample_pos = start_pos.lerp(end_pos, t);
-                    static_hitbox.translated_by(sample_pos)
+                    start_pos.lerp(end_pos, t)
                 })
                 .collect();
 
-            // Find the first block that a hitbox intersects
+            // Find the first sample whose hitbox intersects a block, keeping track of the
+            // last sample we know is still clear so we can resolve back to it below.
 
-            let mut center_at_hit = None;
             let mut hit_block = None;
-            
-            let mut checked_blocks = 0u32;
+            let mut safe_sample = start_pos;
+            let mut blocked_sample = None;
 
-            'hitboxes: for hitbox in entity_hitboxes {
+            let mut checked_blocks = 0usize;
+
+            'samples: for sample_pos in samples {
+                let hitbox = static_hitbox.translated_by(sample_pos);
                 for block_pos in &possible_hits {
                     checked_blocks += 1;
                     let block_hitbox = Aabb3d {
@@ -159,17 +182,74 @@ pub fn handle(
                         max: block_pos.pos.as_vec3a() + (1.0 - Vec3A::splat(f32::EPSILON)),
                     };
                     if hitbox.intersects(&block_hitbox) {
-                        center_at_hit = Some(hitbox.center());
                         hit_block = Some(*block_pos);
-                        break 'hitboxes;
+                        blocked_sample = Some(sample_pos);
+                        break 'samples;
+                    }
+                }
+                safe_sample = sample_pos;
+            }
+            if let Some(collided_block) = hit_block {
+                debug!(
+                    "{} Hit block at {}",
+                    identity.name.as_ref().expect("Entity has no name"),
+                    collided_block
+                );
+                debug!(
+                    "{} blocks checked in total for collide, took {:?}",
+                    checked_blocks,
+                    Instant::now() - start
+                );
+
+                // If it's not a player we need to set their position to not be colliding with the block.
+                // If we ever get around to doing an anticheat system we can do server-side player
+                // collision resolution but for now we just let the client handle it.
+                if !is_player {
+                    let block_hitbox = Aabb3d {
+                        min: collided_block.pos.as_vec3a(),
+                        max: collided_block.pos.as_vec3a() + (1.0 - Vec3A::splat(f32::EPSILON)),
+                    };
+
+                    let mut safe = safe_sample;
+                    let mut blocked =
+                        blocked_sample.expect("hit_block implies a blocked sample exists");
+
+                    // Binary search along the travel path between the last known-clear sample
+                    // and the one that collided, so we land as close to the block as possible
+                    // instead of snapping all the way back to the previous substep.
+                    for _ in 0..12 {
+                        let mid = safe.lerp(blocked, 0.5);
+                        if static_hitbox.translated_by(mid).intersects(&block_hitbox) {
+                            blocked = mid;
+                        } else {
+                            safe = mid;
+                        }
+                    }
+
+                    pos.coords = safe.as_dvec3();
+
+                    // Zero out velocity on the axis that actually drove us into the block so we
+                    // don't just re-collide (and re-correct) again next tick. This assumes the
+                    // dominant axis of `delta` is the one that hit, which holds while a substep
+                    // only ever moves along one block dimension - it'll need proper per-axis MTV
+                    // once we're picking the *closest* block instead of just the first one found.
+                    if let Some(mut vel) = vel {
+                        let axis = if delta.x.abs() >= delta.y.abs() && delta.x.abs() >= delta.z.abs()
+                        {
+                            // Hit something on the x-axis
+                            0
+                        } else if delta.y.abs() >= delta.z.abs() {
+                            // Hit something on the y-axis
+                            grounded.0 = true;
+                            1
+                        } else {
+                            // Hit on the z-axis
+                            2
+                        };
+                        vel.vec[axis] = 0.0;
                     }
                 }
             }
-            if let Some(collided_block) = hit_block {
-                debug!("{} Hit block at {}", identity.name.as_ref().expect("Entity has no name"), collided_block);
-                debug!("{} blocks checked in total for collide, took {:?}", checked_blocks, Instant::now() - start);
-            }
-            
 
             entity_updates_writer.write(SendEntityUpdate(eid));
         }
