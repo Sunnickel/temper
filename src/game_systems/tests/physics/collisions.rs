@@ -172,10 +172,17 @@ fn player_landing_on_ground_gets_marked_grounded_without_position_correction() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround { currently_grounded: false, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
 
     let entity = world
-        .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.2, 0.5))))
+        .spawn((
+            bundle,
+            HasCollisions,
+            OldPosition::from(Position::new(0.5, 65.2, 0.5)),
+        ))
         .id();
 
     let mut schedule = Schedule::default();
@@ -218,10 +225,17 @@ fn player_predicted_next_step_can_detect_an_upcoming_landing() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
 
     let entity = world
-        .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.7, 0.5))))
+        .spawn((
+            bundle,
+            HasCollisions,
+            OldPosition::from(Position::new(0.5, 65.7, 0.5)),
+        ))
         .id();
 
     let mut schedule = Schedule::default();
@@ -263,10 +277,17 @@ fn player_landing_with_negligible_horizontal_jitter_still_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
 
     let entity = world
-        .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.2, 0.5))))
+        .spawn((
+            bundle,
+            HasCollisions,
+            OldPosition::from(Position::new(0.5, 65.2, 0.5)),
+        ))
         .id();
 
     let mut schedule = Schedule::default();
@@ -274,7 +295,10 @@ fn player_landing_with_negligible_horizontal_jitter_still_detected() {
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
-    assert!(grounded.currently_grounded, "expected landing to be detected despite tiny horizontal jitter");
+    assert!(
+        grounded.currently_grounded,
+        "expected landing to be detected despite tiny horizontal jitter"
+    );
 }
 
 #[test]
@@ -305,10 +329,17 @@ fn player_walking_into_a_wall_gets_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround {currently_grounded: true, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: true,
+        was_grounded: false,
+    };
 
     let entity = world
-        .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.0, 0.5))))
+        .spawn((
+            bundle,
+            HasCollisions,
+            OldPosition::from(Position::new(0.5, 65.0, 0.5)),
+        ))
         .id();
 
     let mut schedule = Schedule::default();
@@ -362,7 +393,10 @@ fn player_landing_over_multiple_small_ticks_still_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
 
     let entity = world.spawn((bundle, HasCollisions)).id();
 
@@ -404,10 +438,17 @@ fn player_landing_flush_on_a_whole_number_boundary_still_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
 
     let entity = world
-        .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 72.1213, 0.5))))
+        .spawn((
+            bundle,
+            HasCollisions,
+            OldPosition::from(Position::new(0.5, 72.1213, 0.5)),
+        ))
         .id();
 
     let mut schedule = Schedule::default();
@@ -448,10 +489,17 @@ fn player_jumping_off_ground_does_not_get_falsely_marked_as_hitting_it() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
 
     let entity = world
-        .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 72.0, 0.5))))
+        .spawn((
+            bundle,
+            HasCollisions,
+            OldPosition::from(Position::new(0.5, 72.0, 0.5)),
+        ))
         .id();
 
     let mut schedule = Schedule::default();

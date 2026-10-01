@@ -10,6 +10,7 @@ use temper_components::player::grounded::OnGround;
 use temper_components::player::keepalive::KeepAliveTracker;
 use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::teleport_tracker::TeleportTracker;
+use temper_components::player::velocity::Velocity;
 use temper_components::player::{
     gamemode::GameModeComponent, offline_player_data::OfflinePlayerData,
     pending_events::PendingPlayerJoin, player_bundle::PlayerBundle, sneak::SneakState,
@@ -22,7 +23,6 @@ use temper_net_runtime::connection::DisconnectHandle;
 use temper_resources::new_conn::NewConnectionRecv;
 use temper_state::GlobalStateResource;
 use tracing::{error, info};
-use temper_components::player::velocity::Velocity;
 
 pub fn accept_new_connections(
     mut cmd: Commands,

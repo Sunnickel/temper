@@ -1,7 +1,7 @@
+use crate::player::position::Position;
 use bevy_ecs::prelude::Component;
 use bevy_math::DVec3;
 use deref_derive::{Deref, DerefMut};
-use crate::player::position::Position;
 
 #[derive(Component, Debug, Clone, Copy, Deref, DerefMut)]
 pub struct OldPosition(DVec3);

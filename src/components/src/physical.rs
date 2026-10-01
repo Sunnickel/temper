@@ -2,8 +2,6 @@ use crate::bounds::CollisionBounds;
 use bevy_ecs::prelude::Component;
 use temper_data::generated::entities::EntityType as VanillaEntityType;
 
-
-
 /// Physical properties of an entity.
 ///
 /// These properties are derived from vanilla data but can be modified

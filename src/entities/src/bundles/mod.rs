@@ -75,8 +75,6 @@ macro_rules! define_entity_bundle {
             pub on_ground: OnGround,
             pub last_synced_position: LastSyncedPosition,
         }
-        
-        
 
         impl $bundle_name {
             pub const fn name() -> &'static str {
@@ -95,7 +93,10 @@ macro_rules! define_entity_bundle {
                     spawn,
                     rotation: Rotation::default(),
                     velocity: Velocity::zero(),
-                    on_ground: OnGround{ currently_grounded: false, was_grounded: false},
+                    on_ground: OnGround {
+                        currently_grounded: false,
+                        was_grounded: false,
+                    },
                     last_synced_position: LastSyncedPosition::from_position(&position),
                     position,
                 }

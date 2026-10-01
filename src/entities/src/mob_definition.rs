@@ -177,8 +177,8 @@ macro_rules! define_mob {
             pub fn profile(&self) -> $crate::mob_definition::MobProfile {
                 $crate::mob_definition::MobProfile::$profile
             }
-            
-            
+
+
         }
 
         pub struct $definition;

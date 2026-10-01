@@ -6,6 +6,7 @@ use bevy_math::bounding::BoundingVolume;
 use std::time::Instant;
 use temper_components::bounds::CollisionBounds;
 use temper_components::entity_identity::Identity;
+use temper_components::player::gamemode::{GameMode, GameModeComponent};
 use temper_components::player::grounded::OnGround;
 use temper_components::player::old_position::OldPosition;
 use temper_components::player::player_marker::PlayerMarker;
@@ -19,11 +20,9 @@ use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
 use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
-use temper_messages::particle::SendParticle;
 use temper_state::{GlobalState, GlobalStateResource};
 use temper_world::RefChunk;
 use tracing::{debug, error};
-use temper_components::player::gamemode::{GameModeComponent, GameMode};
 
 type CollisionQueryItem<'a> = (
     Entity,
@@ -61,7 +60,9 @@ pub fn handle(
         is_player,
     ) in query
     {
-        if let Some(gamemode) = gamemode && matches!(gamemode.0, GameMode::Spectator) {
+        if let Some(gamemode) = gamemode
+            && matches!(gamemode.0, GameMode::Spectator)
+        {
             continue;
         }
         if pos.is_changed() {
@@ -84,8 +85,8 @@ pub fn handle(
 
             // Players and non-players have opposite update orderings:
             // - non-players already had Velocity applied, so sweep from `pos - vel -> pos`
-            // - players only have their last observed step, so predict `pos -> pos + delta`. 
-            // I'm aware that just guessing a player's next position isn't a good idea, but I don't 
+            // - players only have their last observed step, so predict `pos -> pos + delta`.
+            // I'm aware that just guessing a player's next position isn't a good idea, but I don't
             // have any better ideas that isn't "Do player physics serverside"
             let (sweep_start_pos, sweep_end_pos, sweep_delta) = if !is_player {
                 if let Some(vel) = &vel {
@@ -293,7 +294,7 @@ fn sweep_aabb(
             return None;
         }
     }
-    
+
     if !any_moving_axis_constrained {
         return None;
     }
