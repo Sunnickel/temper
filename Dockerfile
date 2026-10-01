@@ -31,5 +31,5 @@ USER temper
 EXPOSE 25565
 EXPOSE 9000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD nc -z localhost 25565 || exit 1
+  CMD nc -z 127.0.0.1 25565 || exit 1
 CMD ["./temper", "--no-tui"]
