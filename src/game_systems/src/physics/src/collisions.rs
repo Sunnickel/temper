@@ -65,10 +65,6 @@ pub fn handle(
             continue;
         }
         if pos.is_changed() {
-            if !is_player {
-                grounded.was_grounded = grounded.currently_grounded;
-            }
-
             let start = Instant::now();
             let static_hitbox = if let Some(bounds) = collision_bounds {
                 bounds

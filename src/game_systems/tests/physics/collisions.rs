@@ -1,7 +1,7 @@
 use bevy_ecs::message::MessageRegistry;
 use bevy_ecs::prelude::*;
 use bevy_math::Vec3A;
-use physics::{collisions, velocity};
+use physics::{collisions, ground_state, velocity};
 use temper_components::bounds::CollisionBounds;
 use temper_components::entity_identity::Identity;
 use temper_components::player::grounded::OnGround;
@@ -44,7 +44,7 @@ fn falling_entity_lands_when_velocity_step_crosses_floor() {
     let entity = world.spawn((bundle, Pig, HasCollisions)).id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems((velocity::handle, collisions::handle).chain());
+    schedule.add_systems((ground_state::snapshot, velocity::handle, collisions::handle).chain());
     schedule.run(&mut world);
 
     let pos = world.get::<Position>(entity).unwrap();
@@ -82,7 +82,7 @@ fn walking_entity_stops_flush_against_a_wall_on_a_partial_width_axis() {
     let entity = world.spawn((bundle, Pig, HasCollisions)).id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems((velocity::handle, collisions::handle).chain());
+    schedule.add_systems((ground_state::snapshot, velocity::handle, collisions::handle).chain());
     schedule.run(&mut world);
 
     let pos = world.get::<Position>(entity).unwrap();
@@ -122,7 +122,7 @@ fn diagonal_movement_slides_along_a_wall_instead_of_stopping_dead() {
     let entity = world.spawn((bundle, Pig, HasCollisions)).id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems((velocity::handle, collisions::handle).chain());
+    schedule.add_systems((ground_state::snapshot, velocity::handle, collisions::handle).chain());
     schedule.run(&mut world);
 
     let pos = world.get::<Position>(entity).unwrap();
@@ -179,7 +179,7 @@ fn player_landing_on_ground_gets_marked_grounded_without_position_correction() {
         .id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems(collisions::handle);
+    schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
     schedule.run(&mut world);
 
     let pos = world.get::<Position>(entity).unwrap();
@@ -225,7 +225,7 @@ fn player_predicted_next_step_can_detect_an_upcoming_landing() {
         .id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems(collisions::handle);
+    schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
@@ -270,7 +270,7 @@ fn player_landing_with_negligible_horizontal_jitter_still_detected() {
         .id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems(collisions::handle);
+    schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
@@ -312,7 +312,7 @@ fn player_walking_into_a_wall_gets_detected() {
         .id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems(collisions::handle);
+    schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
@@ -333,7 +333,7 @@ fn player_landing_over_multiple_small_ticks_still_detected() {
             }
         }
         let mut schedule = Schedule::default();
-        schedule.add_systems(collisions::handle);
+        schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
         schedule.run(world);
     }
 
@@ -411,7 +411,7 @@ fn player_landing_flush_on_a_whole_number_boundary_still_detected() {
         .id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems(collisions::handle);
+    schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
@@ -455,7 +455,7 @@ fn player_jumping_off_ground_does_not_get_falsely_marked_as_hitting_it() {
         .id();
 
     let mut schedule = Schedule::default();
-    schedule.add_systems(collisions::handle);
+    schedule.add_systems((ground_state::snapshot, collisions::handle).chain());
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
@@ -479,10 +479,11 @@ fn repeated_predicted_player_landing_only_marks_the_first_tick_as_new_ground_con
             }
         }
 
-        world
-            .get_mut::<OnGround>(entity)
-            .unwrap()
-            .set_grounded(reported_on_ground);
+        {
+            let mut grounded = world.get_mut::<OnGround>(entity).unwrap();
+            grounded.snapshot();
+            grounded.currently_grounded = reported_on_ground;
+        }
 
         let mut schedule = Schedule::default();
         schedule.add_systems(collisions::handle);
