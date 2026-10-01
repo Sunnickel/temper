@@ -22,7 +22,7 @@ use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
 use temper_state::{GlobalState, GlobalStateResource};
 use temper_world::RefChunk;
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 type CollisionQueryItem<'a> = (
     Entity,
@@ -202,7 +202,7 @@ pub fn handle(
                 }
 
                 if axis != 1 || grounded.just_landed() {
-                    debug!(
+                    trace!(
                         "{} Hit block at {}, {} blocks checked, took {:?}",
                         identity.name.as_ref().expect("Entity has no name"),
                         collided_block,
