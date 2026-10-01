@@ -13,7 +13,7 @@ use temper_components::player::position::Position;
 use temper_components::player::velocity::Velocity;
 use temper_core::block_properties;
 use temper_core::dimension::Dimension;
-use temper_core::pos::BlockPos;
+use temper_core::pos::{BlockPos, ChunkPos};
 use temper_entities::PhysicalRegistry;
 use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
@@ -21,6 +21,7 @@ use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
 use temper_messages::particle::SendParticle;
 use temper_state::{GlobalState, GlobalStateResource};
+use temper_world::RefChunk;
 use tracing::{debug, error};
 use temper_components::player::gamemode::{GameModeComponent, GameMode};
 
@@ -81,110 +82,142 @@ pub fn handle(
                 }
             };
 
-            // This is really odd but for players velocity isn't really a thing so we calculate the
-            // delta from their last position. For mobs though there is a velocity component, and
-            // velocity has already been applied before figuring out collisions. So we have to do
-            // different things for players vs non-players. This is stupid and should be fixed once
-            // serverside player physics are implemented properly.
-
-            let delta = if let Some(vel) = &vel
-                && !is_player
-            {
-                ***vel
+            // Players and non-players have opposite update orderings:
+            // - non-players already had Velocity applied, so sweep from `pos - vel -> pos`
+            // - players only have their last observed step, so predict `pos -> pos + delta`. 
+            // I'm aware that just guessing a player's next position isn't a good idea, but I don't 
+            // have any better ideas that isn't "Do player physics serverside"
+            let (sweep_start_pos, sweep_end_pos, sweep_delta) = if !is_player {
+                if let Some(vel) = &vel {
+                    let end_pos = pos.as_vec3a();
+                    let delta = ***vel;
+                    (end_pos - delta, end_pos, delta)
+                } else {
+                    error!(
+                        "Entity {} has no velocity and is not a player, skipping collision check",
+                        eid
+                    );
+                    continue;
+                }
             } else if let Some(old_pos) = old_pos {
-                (**pos - **old_pos).as_vec3a()
+                let current_pos = pos.as_vec3a();
+                let delta = (**pos - **old_pos).as_vec3a();
+                (current_pos, current_pos + delta, delta)
             } else {
                 error!(
-                    "Entity {} has no velocity and no old position, skipping collision check",
+                    "Player {} has no old position, skipping collision check",
                     eid
                 );
                 continue;
             };
 
-            let (current_hitbox, next_hitbox) = if let Some(vel) = &vel
-                && !is_player
-            {
-                (
-                    static_hitbox.translated_by(pos.as_vec3a() - ***vel),
-                    static_hitbox.translated_by(pos.as_vec3a()),
-                )
-            } else if is_player {
-                (
-                    static_hitbox.translated_by(pos.as_vec3a()),
-                    static_hitbox.translated_by(pos.as_vec3a() + delta),
-                )
-            } else {
-                error!(
-                    "Entity {} has no velocity and not a player, skipping collision check",
-                    eid
-                );
-                continue;
-            };
+            let current_hitbox = static_hitbox.translated_by(sweep_start_pos);
+            let next_hitbox = static_hitbox.translated_by(sweep_end_pos);
 
-            if next_hitbox == current_hitbox {
+            // Bail out on the raw delta rather than comparing the translated hitboxes -
+            // at typical world coordinates the hitboxes can round to the same f32 value
+            // through floating point cancellation even when a small but real delta exists,
+            // which would wrongly skip collision detection on exactly the ticks (tiny final
+            // approach to a block) where it matters most
+            if sweep_delta == Vec3A::ZERO {
                 continue;
             }
 
-            // Any block we could hit has to be in here
+            // Any block we could hit has to be in here. Pad the scan by a small amount so an entity
+            // resting exactly flush against a block face (e.g. landing perfectly on y=72.0
+            // when the ground block spans [71, 72)) still has that block included - floor/ceil
+            // on the raw bounds would otherwise miss it entirely since it never actually
+            // crosses the boundary, just touches it
             let max_hitbox = next_hitbox.merge(&current_hitbox);
+            const SCAN_PADDING: f32 = 1e-4;
+            let scan_min = max_hitbox.min - Vec3A::splat(SCAN_PADDING);
+            let scan_max = max_hitbox.max + Vec3A::splat(SCAN_PADDING);
 
-            let mut possible_hits = vec![];
+            // Behold, some unhinged bullshit to find the first block hit. Don't ask me how it works,
+            // only god and the bottle of Jack Daniel's that got me through this knows, I certainly don't
+            let moving_min0 = current_hitbox.min;
+            let moving_max0 = current_hitbox.max;
+            let mut best_hit: Option<(f32, usize, BlockPos)> = None;
+            let mut possible_hits = 0;
+            let mut loaded_chunk: Option<(ChunkPos, RefChunk<'_>)> = None;
 
-            for x in max_hitbox.min.x.floor() as i32..max_hitbox.max.x.ceil() as i32 {
-                for y in max_hitbox.min.y.floor() as i32..max_hitbox.max.y.ceil() as i32 {
-                    for z in max_hitbox.min.z.floor() as i32..max_hitbox.max.z.ceil() as i32 {
+            for x in scan_min.x.floor() as i32..scan_max.x.ceil() as i32 {
+                for y in scan_min.y.floor() as i32..scan_max.y.ceil() as i32 {
+                    for z in scan_min.z.floor() as i32..scan_max.z.ceil() as i32 {
                         let block_pos = BlockPos::of(x, y, z);
-                        if is_solid_block(&state.0, block_pos) {
-                            possible_hits.push(block_pos);
+                        let chunk_pos = block_pos.chunk();
+
+                        let needs_chunk_load = loaded_chunk
+                            .as_ref()
+                            .is_none_or(|(loaded_pos, _)| *loaded_pos != chunk_pos);
+                        if needs_chunk_load {
+                            let chunk = state
+                                .0
+                                .world
+                                .get_or_generate_chunk(chunk_pos, Dimension::Overworld)
+                                .expect("Failed to load or generate chunk");
+                            loaded_chunk = Some((chunk_pos, chunk));
+                        }
+
+                        let block_state = loaded_chunk
+                            .as_ref()
+                            .expect("Chunk should be loaded")
+                            .1
+                            .get_block(block_pos.chunk_block_pos());
+                        if !block_properties::is_solid(block_state) {
+                            continue;
+                        }
+
+                        possible_hits += 1;
+
+                        let target_min = block_pos.pos.as_vec3a();
+                        let target_max = target_min + Vec3A::ONE;
+
+                        if let Some((entry_time, axis)) = sweep_aabb(
+                            moving_min0,
+                            moving_max0,
+                            target_min,
+                            target_max,
+                            sweep_delta,
+                        ) && best_hit.is_none_or(|(best_time, _, _)| entry_time < best_time)
+                        {
+                            best_hit = Some((entry_time, axis, block_pos));
                         }
                     }
                 }
             }
 
-            let start_pos = pos.as_vec3a() - delta;
-
-            // Sweep the entity's own hitbox analytically against every candidate block and
-            // find the exact time (0..=1 along `start_pos -> pos`) it would first touch each
-            // one. Keeping the candidate with the smallest entry time gives us the actual
-            // first block hit along the path, rather than whichever one happens to come first
-            // in `possible_hits` or gets sampled first by a coarse substep.
-            let moving_min0 = start_pos + static_hitbox.min;
-            let moving_max0 = start_pos + static_hitbox.max;
-
-            let mut best_hit: Option<(f32, usize, BlockPos)> = None;
-
-            for block_pos in &possible_hits {
-                let target_min = block_pos.pos.as_vec3a();
-                let target_max = target_min + Vec3A::ONE;
-
-                if let Some((entry_time, axis)) =
-                    sweep_aabb(moving_min0, moving_max0, target_min, target_max, delta)
-                    && best_hit.is_none_or(|(best_time, _, _)| entry_time < best_time)
-                {
-                    best_hit = Some((entry_time, axis, *block_pos));
-                }
-            }
-
-            if let Some((entry_time, axis, collided_block)) = best_hit {
+            if let Some((_entry_time, axis, collided_block)) = best_hit {
                 debug!(
                     "{} Hit block at {}, {} blocks checked, took {:?}",
                     identity.name.as_ref().expect("Entity has no name"),
                     collided_block,
-                    possible_hits.len(),
+                    possible_hits,
                     Instant::now() - start
                 );
+
+                // Ground/ceiling contact needs to be recorded regardless of whether we can
+                // correct the entity's position - players are client-authoritative so we
+                // never touch their Position below, but OnGround still has to reflect that
+                // their reported movement did hit something on the y-axis.
+                if axis == 1 {
+                    grounded.0 = true;
+                }
 
                 // If it's not a player we need to set their position to not be colliding with the block.
                 // If we ever get around to doing an anticheat system we can do server-side player
                 // collision resolution but for now we just let the client handle it.
                 if !is_player {
-                    let mut resolved = start_pos + delta * entry_time;
+                    // Only the axis that actually collided needs correcting - the other two
+                    // should keep their full intended movement (this is what lets an entity
+                    // slide along a wall instead of stuttering to a stop diagonally).
+                    let mut resolved = pos.as_vec3a();
 
                     // Snap the blocking axis directly to the block's boundary rather than
                     // trusting the interpolated `entry_time`, so we land exactly flush against
                     // it instead of a hair short/long due to the division above.
                     let block_min = collided_block.pos.as_vec3a();
-                    resolved[axis] = if delta[axis] > 0.0 {
+                    resolved[axis] = if sweep_delta[axis] > 0.0 {
                         block_min[axis] - static_hitbox.max[axis]
                     } else {
                         block_min[axis] + 1.0 - static_hitbox.min[axis]
@@ -196,10 +229,6 @@ pub fn handle(
                     // re-collide (and re-correct) again next tick.
                     if let Some(mut vel) = vel {
                         vel.vec[axis] = 0.0;
-                    }
-
-                    if axis == 1 {
-                        grounded.0 = true;
                     }
                 }
             }
@@ -233,19 +262,34 @@ fn sweep_aabb(
 ) -> Option<(f32, usize)> {
     let mut entry = [f32::NEG_INFINITY; 3];
     let mut exit = [f32::INFINITY; 3];
+    let mut any_moving_axis_constrained = false;
 
     for axis in 0..3 {
         let v = velocity[axis];
         if v > 0.0 {
+            if moving_min0[axis] >= target_max[axis] {
+                // Already flush against (or past) the target's far face and moving further
+                // away - e.g. standing on top of a block and jumping off it.
+            }
             entry[axis] = (target_min[axis] - moving_max0[axis]) / v;
             exit[axis] = (target_max[axis] - moving_min0[axis]) / v;
+            any_moving_axis_constrained = true;
         } else if v < 0.0 {
+            if moving_max0[axis] <= target_min[axis] {
+                // Same thing for near face
+                continue;
+            }
             entry[axis] = (target_max[axis] - moving_min0[axis]) / v;
             exit[axis] = (target_min[axis] - moving_max0[axis]) / v;
+            any_moving_axis_constrained = true;
         } else if moving_max0[axis] <= target_min[axis] || moving_min0[axis] >= target_max[axis] {
             // Never overlapping on this axis regardless of travel on the other two.
             return None;
         }
+    }
+    
+    if !any_moving_axis_constrained {
+        return None;
     }
 
     let entry_time = entry[0].max(entry[1]).max(entry[2]);
