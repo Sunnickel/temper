@@ -30,7 +30,7 @@ fn gravity_application() {
     let entity = world
         .spawn((
             Velocity { vec: Vec3A::ZERO },
-            OnGround(false),
+            OnGround { currently_grounded: false, was_grounded: false},
             Position {
                 coords: DVec3::new(0.0, 100.0, 0.0),
             },
@@ -56,7 +56,7 @@ fn gravity_no_gravity_when_grounded() {
     let entity = world
         .spawn((
             Velocity { vec: Vec3A::ZERO },
-            OnGround(true),
+            OnGround { currently_grounded: true, was_grounded: false},
             Position {
                 coords: DVec3::new(0.0, 100.0, 0.0),
             },
@@ -82,7 +82,7 @@ fn gravity_water_entity_not_in_water() {
     let entity = world
         .spawn((
             Velocity { vec: Vec3A::ZERO },
-            OnGround(false),
+            OnGround { currently_grounded: false, was_grounded: false},
             Position {
                 coords: DVec3::new(0.0, 100.0, 0.0),
             },
@@ -109,7 +109,7 @@ fn gravity_water_entity_no_gravity_when_grounded() {
     let entity = world
         .spawn((
             Velocity { vec: Vec3A::ZERO },
-            OnGround(true),
+            OnGround { currently_grounded: true, was_grounded: false},
             Position {
                 coords: DVec3::new(0.0, 100.0, 0.0),
             },
@@ -140,7 +140,7 @@ fn gravity_water_entity_in_water_no_gravity() {
     let entity = world
         .spawn((
             Velocity { vec: Vec3A::ZERO },
-            OnGround(false),
+            OnGround { currently_grounded: false, was_grounded: false},
             Position {
                 coords: DVec3::new(0.0, 65.0, 0.0),
             },

@@ -41,7 +41,7 @@ pub fn handle(
                     vel_z: f64::from(vel.z),
                     yaw: rot.yaw,
                     pitch: rot.pitch,
-                    on_ground: grounded.0,
+                    on_ground: grounded.currently_grounded,
                 };
                 for (recipient_entity, conn, tracker) in player_query.iter_mut() {
                     if recipient_entity == entity || !tracker.tracking.contains(&entity) {
@@ -70,7 +70,7 @@ pub fn handle(
                     delta_z,
                     yaw: NetAngle::from_degrees(rot.yaw.into()),
                     pitch: NetAngle::from_degrees(rot.pitch.into()),
-                    on_ground: grounded.0,
+                    on_ground: grounded.currently_grounded,
                 };
                 for (recipient_entity, conn, tracker) in player_query.iter_mut() {
                     if recipient_entity == entity || !tracker.tracking.contains(&entity) {

@@ -65,6 +65,10 @@ pub fn handle(
             continue;
         }
         if pos.is_changed() {
+            if !is_player {
+                grounded.was_grounded = grounded.currently_grounded;
+            }
+
             let start = Instant::now();
             let static_hitbox = if let Some(bounds) = collision_bounds {
                 bounds
@@ -141,7 +145,7 @@ pub fn handle(
             let mut possible_hits = 0;
             let mut loaded_chunk: Option<(ChunkPos, RefChunk<'_>)> = None;
 
-            for x in scan_min.x.floor() as i32..scan_max.x.ceil() as i32 {
+            'scan: for x in scan_min.x.floor() as i32..scan_max.x.ceil() as i32 {
                 for y in scan_min.y.floor() as i32..scan_max.y.ceil() as i32 {
                     for z in scan_min.z.floor() as i32..scan_max.z.ceil() as i32 {
                         let block_pos = BlockPos::of(x, y, z);
@@ -182,26 +186,32 @@ pub fn handle(
                         ) && best_hit.is_none_or(|(best_time, _, _)| entry_time < best_time)
                         {
                             best_hit = Some((entry_time, axis, block_pos));
+
+                            if entry_time == 0.0 {
+                                break 'scan;
+                            }
                         }
                     }
                 }
             }
 
             if let Some((_entry_time, axis, collided_block)) = best_hit {
-                debug!(
-                    "{} Hit block at {}, {} blocks checked, took {:?}",
-                    identity.name.as_ref().expect("Entity has no name"),
-                    collided_block,
-                    possible_hits,
-                    Instant::now() - start
-                );
-
                 // Ground/ceiling contact needs to be recorded regardless of whether we can
                 // correct the entity's position - players are client-authoritative so we
                 // never touch their Position below, but OnGround still has to reflect that
                 // their reported movement did hit something on the y-axis.
                 if axis == 1 {
-                    grounded.0 = true;
+                    grounded.currently_grounded = true;
+                }
+
+                if axis != 1 || grounded.just_landed() {
+                    debug!(
+                        "{} Hit block at {}, {} blocks checked, took {:?}",
+                        identity.name.as_ref().expect("Entity has no name"),
+                        collided_block,
+                        possible_hits,
+                        Instant::now() - start
+                    );
                 }
 
                 // If it's not a player we need to set their position to not be colliding with the block.

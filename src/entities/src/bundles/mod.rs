@@ -95,7 +95,7 @@ macro_rules! define_entity_bundle {
                     spawn,
                     rotation: Rotation::default(),
                     velocity: Velocity::zero(),
-                    on_ground: OnGround(false),
+                    on_ground: OnGround{ currently_grounded: false, was_grounded: false},
                     last_synced_position: LastSyncedPosition::from_position(&position),
                     position,
                 }

@@ -38,7 +38,7 @@ pub fn handle(
                 continue;
             };
             // Skip entities that aren't grounded
-            if !grounded.0 {
+            if !grounded.currently_grounded {
                 continue;
             }
 
@@ -96,7 +96,7 @@ pub fn handle(
                         "Un-grounding entity at {:?} - no support remaining",
                         pos.coords
                     );
-                    grounded.0 = false;
+                    grounded.currently_grounded = false;
                 } else {
                     trace!(
                         "Entity at {:?} still has support after block break",

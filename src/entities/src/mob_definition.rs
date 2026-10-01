@@ -158,7 +158,7 @@ macro_rules! define_mob {
                     spawn,
                     rotation: <$rotation>::default(),
                     velocity: <$velocity>::zero(),
-                    on_ground: $on_ground(false),
+                    on_ground: <$on_ground>::default(),
                     last_synced_position: <$last_synced_position>::from_position(&position),
                     position,
                     $(

@@ -53,7 +53,7 @@ fn falling_entity_lands_when_velocity_step_crosses_floor() {
 
     assert_eq!(pos.coords.y, 65.0);
     assert_eq!(vel.vec.y, 0.0);
-    assert!(grounded.0);
+    assert!(grounded.currently_grounded);
 }
 
 #[test]
@@ -172,7 +172,7 @@ fn player_landing_on_ground_gets_marked_grounded_without_position_correction() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(false);
+    bundle.on_ground = OnGround { currently_grounded: false, was_grounded: false};
 
     let entity = world
         .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.2, 0.5))))
@@ -187,7 +187,7 @@ fn player_landing_on_ground_gets_marked_grounded_without_position_correction() {
 
     // Position is left untouched - players are client-authoritative.
     assert_eq!(pos.coords, requested_pos.coords);
-    assert!(grounded.0);
+    assert!(grounded.currently_grounded);
 }
 
 #[test]
@@ -218,7 +218,7 @@ fn player_predicted_next_step_can_detect_an_upcoming_landing() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(false);
+    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
 
     let entity = world
         .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.7, 0.5))))
@@ -230,7 +230,7 @@ fn player_predicted_next_step_can_detect_an_upcoming_landing() {
 
     let grounded = world.get::<OnGround>(entity).unwrap();
     assert!(
-        grounded.0,
+        grounded.currently_grounded,
         "expected the predicted next player step to detect the upcoming landing"
     );
 }
@@ -263,7 +263,7 @@ fn player_landing_with_negligible_horizontal_jitter_still_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(false);
+    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
 
     let entity = world
         .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.2, 0.5))))
@@ -274,7 +274,7 @@ fn player_landing_with_negligible_horizontal_jitter_still_detected() {
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
-    assert!(grounded.0, "expected landing to be detected despite tiny horizontal jitter");
+    assert!(grounded.currently_grounded, "expected landing to be detected despite tiny horizontal jitter");
 }
 
 #[test]
@@ -305,7 +305,7 @@ fn player_walking_into_a_wall_gets_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(true);
+    bundle.on_ground = OnGround {currently_grounded: true, was_grounded: false};
 
     let entity = world
         .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 65.0, 0.5))))
@@ -316,7 +316,7 @@ fn player_walking_into_a_wall_gets_detected() {
     schedule.run(&mut world);
 
     let grounded = world.get::<OnGround>(entity).unwrap();
-    assert!(grounded.0);
+    assert!(grounded.currently_grounded);
 }
 
 #[test]
@@ -362,7 +362,7 @@ fn player_landing_over_multiple_small_ticks_still_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(false);
+    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
 
     let entity = world.spawn((bundle, HasCollisions)).id();
 
@@ -372,7 +372,7 @@ fn player_landing_over_multiple_small_ticks_still_detected() {
 
     let grounded = world.get::<OnGround>(entity).unwrap();
     assert!(
-        grounded.0,
+        grounded.currently_grounded,
         "expected landing to be detected across successive purely-vertical ticks"
     );
 }
@@ -404,7 +404,7 @@ fn player_landing_flush_on_a_whole_number_boundary_still_detected() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(false);
+    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
 
     let entity = world
         .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 72.1213, 0.5))))
@@ -416,7 +416,7 @@ fn player_landing_flush_on_a_whole_number_boundary_still_detected() {
 
     let grounded = world.get::<OnGround>(entity).unwrap();
     assert!(
-        grounded.0,
+        grounded.currently_grounded,
         "expected landing flush on a whole-number boundary to still be detected"
     );
 }
@@ -448,7 +448,7 @@ fn player_jumping_off_ground_does_not_get_falsely_marked_as_hitting_it() {
         ),
         ..Default::default()
     };
-    bundle.on_ground = OnGround(false);
+    bundle.on_ground = OnGround{currently_grounded: false, was_grounded: false};
 
     let entity = world
         .spawn((bundle, HasCollisions, OldPosition::from(Position::new(0.5, 72.0, 0.5))))
@@ -460,7 +460,82 @@ fn player_jumping_off_ground_does_not_get_falsely_marked_as_hitting_it() {
 
     let grounded = world.get::<OnGround>(entity).unwrap();
     assert!(
-        !grounded.0,
+        !grounded.currently_grounded,
         "jumping away from flush ground contact should not re-report a ground hit"
+    );
+}
+
+#[test]
+fn repeated_predicted_player_landing_only_marks_the_first_tick_as_new_ground_contact() {
+    fn run_tick(world: &mut World, entity: Entity, new_pos: Position, reported_on_ground: bool) {
+        {
+            let mut pos = world.get_mut::<Position>(entity).unwrap();
+            let previous = *pos;
+            *pos = new_pos;
+            if let Some(mut old_pos) = world.get_mut::<OldPosition>(entity) {
+                *old_pos = OldPosition::from(previous);
+            } else {
+                world.entity_mut(entity).insert(OldPosition::from(previous));
+            }
+        }
+
+        world
+            .get_mut::<OnGround>(entity)
+            .unwrap()
+            .set_grounded(reported_on_ground);
+
+        let mut schedule = Schedule::default();
+        schedule.add_systems(collisions::handle);
+        schedule.run(world);
+    }
+
+    let mut world = World::new();
+    let (state, _temp_dir) = create_test_state();
+
+    {
+        let mut chunk = state
+            .0
+            .world
+            .get_or_generate_mut(ChunkPos::new(0, 0), Dimension::Overworld)
+            .expect("Failed to create test chunk");
+        chunk.set_block(ChunkBlockPos::new(0, 64, 0), block!("stone"));
+    }
+
+    world.insert_resource(state);
+    world.insert_resource(PhysicalRegistry::new());
+    MessageRegistry::register_message::<SendEntityUpdate>(&mut world);
+
+    let mut bundle = PlayerBundle {
+        identity: Identity::new(Some("Steve".to_string())),
+        position: Position::new(0.5, 65.7, 0.5),
+        collision_bounds: CollisionBounds::new(
+            Vec3A::new(-0.3, 0.0, -0.3),
+            Vec3A::new(0.3, 1.8, 0.3),
+        ),
+        ..Default::default()
+    };
+    bundle.on_ground = OnGround {
+        currently_grounded: false,
+        was_grounded: false,
+    };
+
+    let entity = world.spawn((bundle, HasCollisions)).id();
+
+    run_tick(&mut world, entity, Position::new(0.5, 65.3, 0.5), false);
+
+    let grounded = world.get::<OnGround>(entity).unwrap();
+    assert!(grounded.currently_grounded);
+    assert!(
+        !grounded.was_grounded,
+        "the first predictive landing should look like a new ground contact"
+    );
+
+    run_tick(&mut world, entity, Position::new(0.5, 64.9, 0.5), false);
+
+    let grounded = world.get::<OnGround>(entity).unwrap();
+    assert!(grounded.currently_grounded);
+    assert!(
+        grounded.was_grounded,
+        "the second predictive landing tick should preserve that the entity was already grounded"
     );
 }

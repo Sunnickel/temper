@@ -25,7 +25,7 @@ type EntityQuery<'w, 's> = Query<
 // Just apply gravity to a mob's velocity. Application of velocity is handled elsewhere.
 pub fn handle(mut entities: EntityQuery, state: Res<GlobalStateResource>) {
     for (mut vel, grounded, pos, is_water) in entities.iter_mut() {
-        if grounded.0 {
+        if grounded.currently_grounded {
             continue;
         }
 

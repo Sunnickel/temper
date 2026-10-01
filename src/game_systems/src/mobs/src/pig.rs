@@ -69,7 +69,7 @@ pub fn tick_pig(
         };
 
         // Jump if the next waypoint is 1 block above and the pig is on the ground.
-        if next.pos.y > current_block.pos.y && grounded.0 {
+        if next.pos.y > current_block.pos.y && grounded.currently_grounded {
             velocity.vec.y = JUMP_IMPULSE;
         }
 

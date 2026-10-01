@@ -58,7 +58,7 @@ pub fn handle(
             if rot.yaw != new_rot.yaw || rot.pitch != new_rot.pitch {
                 *rot = new_rot;
             }
-            *ground = OnGround(on_ground);
+            ground.set_grounded(on_ground);
 
             // Send movement message for broadcasting
             movement_messages.write(movement);

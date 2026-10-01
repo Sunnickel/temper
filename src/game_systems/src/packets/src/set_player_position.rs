@@ -2,13 +2,13 @@ use bevy_ecs::prelude::{Commands, Entity, MessageWriter, Query, Res};
 
 use temper_components::entity_identity::Identity;
 use temper_components::player::grounded::OnGround;
+use temper_components::player::old_position::OldPosition;
 use temper_components::player::position::Position;
 use temper_components::player::teleport_tracker::TeleportTracker;
 use temper_messages::cross_chunk_boundary_event::ChunkBoundaryCrossed;
 use temper_messages::packet_messages::Movement;
 use temper_protocol::SetPlayerPositionPacketReceiver;
 use tracing::trace;
-use temper_components::player::old_position::OldPosition;
 
 pub fn handle(
     receiver: Res<SetPlayerPositionPacketReceiver>,
@@ -18,11 +18,11 @@ pub fn handle(
         &mut OnGround,
         &TeleportTracker,
         &Identity,
-        Option<&mut OldPosition>
+        Option<&mut OldPosition>,
     )>,
     mut movement_messages: MessageWriter<Movement>,
     mut cross_chunk_border_msg: MessageWriter<ChunkBoundaryCrossed>,
-    mut cmd: Commands
+    mut cmd: Commands,
 ) {
     for (event, eid) in receiver.0.try_iter() {
         if let Ok((entity, mut pos, mut ground, tracker, identity, old_pos)) = query.get_mut(eid) {
@@ -57,7 +57,7 @@ pub fn handle(
                 }
                 *pos = new_pos;
             }
-            *ground = OnGround(event.on_ground);
+            ground.set_grounded(event.on_ground);
 
             // Send movement message for broadcasting
             movement_messages.write(movement);
