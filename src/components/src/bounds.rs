@@ -1,64 +1,85 @@
 use bevy_ecs::prelude::Component;
+use bevy_math::bounding::{Aabb3d, BoundingVolume, IntersectsVolume};
+use bevy_math::Vec3A;
+use deref_derive::{Deref, DerefMut};
 
-#[derive(Component)]
-pub struct CollisionBounds {
-    // Given a start position, where the bounding box starts on the x-axis.
-    pub x_offset_start: f64,
-    // Given a start position, where the bounding box ends on the x-axis.
-    pub x_offset_end: f64,
-    // Given a start position, where the bounding box starts on the y-axis.
-    pub y_offset_start: f64,
-    // Given a start position, where the bounding box ends on the y-axis.
-    pub y_offset_end: f64,
-    // Given a start position, where the bounding box starts on the z-axis.
-    pub z_offset_start: f64,
-    // Given a start position, where the bounding box ends on the z-axis.
-    pub z_offset_end: f64,
-}
+/// Entity bounding box (collision box).
+///
+/// Represents the volume occupied by an entity in the world.
+/// Used for collision detection and physics.
+#[derive(Component, Deref, DerefMut, Copy, Clone, Debug)]
+pub struct CollisionBounds(Aabb3d);
 
 impl Default for CollisionBounds {
     fn default() -> Self {
-        CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 0.0,
-            y_offset_start: 0.0,
-            y_offset_end: 0.0,
-            z_offset_start: 0.0,
-            z_offset_end: 0.0,
-        }
+        CollisionBounds(Aabb3d {
+            min: Vec3A::new(0.0, 0.0, 0.0),
+            max: Vec3A::new(0.0, 0.0, 0.0),
+        })
     }
 }
 
 impl CollisionBounds {
+    pub fn new(min: Vec3A, max: Vec3A) -> Self {
+        CollisionBounds(Aabb3d { min, max })
+    }
+
     #[inline]
     pub fn collides(
         &self,
-        own_pos: (f64, f64, f64),
+        own_pos: Vec3A,
         other_bounds: &CollisionBounds,
-        other_pos: (f64, f64, f64),
+        other_pos: Vec3A,
     ) -> bool {
-        let (own_x, own_y, own_z) = own_pos;
-        let (other_x, other_y, other_z) = other_pos;
+        self.translated_by(own_pos)
+            .intersects(&other_bounds.translated_by(other_pos))
+    }
+    /// Creates a new bounding box from vanilla dimensions.
+    ///
+    /// # Arguments
+    ///
+    /// * `dimension` - Dimensions [width, height] from temper-data
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use temper_data::generated::entities::EntityType as VanillaEntityType;
+    ///
+    /// let bbox = BoundingBox::from_vanilla_dimension(VanillaEntityType::PIG.dimension);
+    /// assert_eq!(bbox.half_width, 0.45); // 0.9 / 2
+    /// assert_eq!(bbox.height, 0.9);
+    /// ```
+    pub const fn from_vanilla_dimension(dimension: [f32; 2]) -> Self {
+        Self(Aabb3d {
+            max: Vec3A::new(dimension[0] / 2.0, dimension[1], dimension[0] / 2.0),
+            min: Vec3A::new(-(dimension[0] / 2.0), 0.0, -(dimension[0] / 2.0)),
+        })
+    }
 
-        // Pre-calculate bounds
-        let own_x_start = own_x + self.x_offset_start;
-        let own_x_end = own_x + self.x_offset_end;
-        let own_y_start = own_y + self.y_offset_start;
-        let own_y_end = own_y + self.y_offset_end;
-        let own_z_start = own_z + self.z_offset_start;
-        let own_z_end = own_z + self.z_offset_end;
+    /// Returns the total width of the bounding box.
+    pub fn width(&self) -> f64 {
+        f64::from(self.max.x - self.min.x)
+    }
 
-        let other_x_start = other_x + other_bounds.x_offset_start;
-        let other_x_end = other_x + other_bounds.x_offset_end;
-        let other_y_start = other_y + other_bounds.y_offset_start;
-        let other_y_end = other_y + other_bounds.y_offset_end;
-        let other_z_start = other_z + other_bounds.z_offset_start;
-        let other_z_end = other_z + other_bounds.z_offset_end;
+    /// Returns the height of the bounding box.
+    pub fn height(&self) -> f64 {
+        f64::from(self.max.y - self.min.y)
+    }
 
-        // Check collisions axis by axis
-        (own_x_start < other_x_end && own_x_end > other_x_start)
-            && (own_y_start < other_y_end && own_y_end > other_y_start)
-            && (own_z_start < other_z_end && own_z_end > other_z_start)
+    /// Returns the depth of the bounding box.
+    pub fn depth(&self) -> f64 {
+        f64::from(self.max.z - self.min.z)
+    }
+
+    /// Returns the volume of the bounding box in cubic blocks.
+    pub fn volume(&self) -> f64 {
+        self.width() * self.height() * self.depth()
+    }
+}
+
+impl From<Aabb3d> for CollisionBounds {
+    fn from(aabb: Aabb3d) -> Self {
+        CollisionBounds(aabb)
     }
 }
 
@@ -68,106 +89,46 @@ mod tests {
 
     #[test]
     fn collides_when_boxes_overlap() {
-        let bounds1 = CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 2.0,
-            y_offset_start: 0.0,
-            y_offset_end: 2.0,
-            z_offset_start: 0.0,
-            z_offset_end: 2.0,
-        };
-        let bounds2 = CollisionBounds {
-            x_offset_start: 1.0,
-            x_offset_end: 3.0,
-            y_offset_start: 1.0,
-            y_offset_end: 3.0,
-            z_offset_start: 1.0,
-            z_offset_end: 3.0,
-        };
-        assert!(bounds1.collides((0.0, 0.0, 0.0), &bounds2, (0.0, 0.0, 0.0)));
+        let bounds1 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let bounds2 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let pos1 = Vec3A::new(0.0, 0.0, 0.0);
+        let pos2 = Vec3A::new(0.5, 0.5, 0.5);
+        assert!(bounds1.collides(pos1, &bounds2, pos2));
     }
 
     #[test]
     fn does_not_collide_when_boxes_do_not_overlap() {
-        let bounds1 = CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 1.0,
-            y_offset_start: 0.0,
-            y_offset_end: 1.0,
-            z_offset_start: 0.0,
-            z_offset_end: 1.0,
-        };
-        let bounds2 = CollisionBounds {
-            x_offset_start: 2.0,
-            x_offset_end: 3.0,
-            y_offset_start: 2.0,
-            y_offset_end: 3.0,
-            z_offset_start: 2.0,
-            z_offset_end: 3.0,
-        };
-        assert!(!bounds1.collides((0.0, 0.0, 0.0), &bounds2, (0.0, 0.0, 0.0)));
+        let bounds1 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let bounds2 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let pos1 = Vec3A::new(0.0, 0.0, 0.0);
+        let pos2 = Vec3A::new(3.0, 3.0, 3.0);
+        assert!(!bounds1.collides(pos1, &bounds2, pos2));
     }
 
     #[test]
     fn collides_when_boxes_touch_edges() {
-        let bounds1 = CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 1.0,
-            y_offset_start: 0.0,
-            y_offset_end: 1.0,
-            z_offset_start: 0.0,
-            z_offset_end: 1.0,
-        };
-        let bounds2 = CollisionBounds {
-            x_offset_start: 1.0,
-            x_offset_end: 2.0,
-            y_offset_start: 1.0,
-            y_offset_end: 2.0,
-            z_offset_start: 1.0,
-            z_offset_end: 2.0,
-        };
-        assert!(!bounds1.collides((0.0, 0.0, 0.0), &bounds2, (0.0, 0.0, 0.0)));
+        let bounds1 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let bounds2 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let pos1 = Vec3A::new(0.0, 0.0, 0.0);
+        let pos2 = Vec3A::new(1.0, 0.0, 0.0);
+        assert!(bounds1.collides(pos1, &bounds2, pos2));
     }
 
     #[test]
     fn collides_when_one_box_inside_another() {
-        let bounds1 = CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 3.0,
-            y_offset_start: 0.0,
-            y_offset_end: 3.0,
-            z_offset_start: 0.0,
-            z_offset_end: 3.0,
-        };
-        let bounds2 = CollisionBounds {
-            x_offset_start: 1.0,
-            x_offset_end: 2.0,
-            y_offset_start: 1.0,
-            y_offset_end: 2.0,
-            z_offset_start: 1.0,
-            z_offset_end: 2.0,
-        };
-        assert!(bounds1.collides((0.0, 0.0, 0.0), &bounds2, (0.0, 0.0, 0.0)));
+        let bounds1 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(2.0, 2.0, 2.0));
+        let bounds2 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let pos1 = Vec3A::new(0.0, 0.0, 0.0);
+        let pos2 = Vec3A::new(0.5, 0.5, 0.5);
+        assert!(bounds1.collides(pos1, &bounds2, pos2));
     }
 
     #[test]
     fn does_not_collide_when_positions_are_far_apart() {
-        let bounds1 = CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 1.0,
-            y_offset_start: 0.0,
-            y_offset_end: 1.0,
-            z_offset_start: 0.0,
-            z_offset_end: 1.0,
-        };
-        let bounds2 = CollisionBounds {
-            x_offset_start: 0.0,
-            x_offset_end: 1.0,
-            y_offset_start: 0.0,
-            y_offset_end: 1.0,
-            z_offset_start: 0.0,
-            z_offset_end: 1.0,
-        };
-        assert!(!bounds1.collides((0.0, 0.0, 0.0), &bounds2, (10.0, 10.0, 10.0)));
+        let bounds1 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let bounds2 = CollisionBounds::new(Vec3A::new(0.0, 0.0, 0.0), Vec3A::new(1.0, 1.0, 1.0));
+        let pos1 = Vec3A::new(0.0, 0.0, 0.0);
+        let pos2 = Vec3A::new(10.0, 10.0, 10.0);
+        assert!(!bounds1.collides(pos1, &bounds2, pos2));
     }
 }

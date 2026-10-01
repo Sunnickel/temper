@@ -29,6 +29,12 @@ impl LastSyncedPosition {
     }
 }
 
+impl Default for LastSyncedPosition {
+    fn default() -> Self {
+        Self(DVec3::ZERO)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

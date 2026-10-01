@@ -6,7 +6,7 @@ use temper_components::{bounds::CollisionBounds, player::sneak::SneakState};
 use temper_core::pos::BlockPos;
 use temper_messages::{BlockEntityPlaced, BlockInteractMessage};
 
-use bevy_math::{DVec3, IVec3};
+use bevy_math::{DVec3, IVec3, Vec3A};
 use temper_blocks::BlockDispatch;
 use temper_components::player::rotation::Rotation;
 use temper_core::block_state_id::{BlockStateId, ITEM_TO_BLOCK_MAPPING};
@@ -137,19 +137,15 @@ pub fn handle(
                     let does_collide = {
                         pos_q.into_iter().any(|(pos, bounds)| {
                             bounds.collides(
-                                (pos.x, pos.y, pos.z),
-                                &CollisionBounds {
-                                    x_offset_start: 0.0,
-                                    x_offset_end: 1.0,
-                                    y_offset_start: 0.0,
-                                    y_offset_end: 1.0,
-                                    z_offset_start: 0.0,
-                                    z_offset_end: 1.0,
-                                },
-                                (
-                                    f64::from(offset_pos.pos.x),
-                                    f64::from(offset_pos.pos.y),
-                                    f64::from(offset_pos.pos.z),
+                                DVec3::new(pos.x, pos.y, pos.z).as_vec3a(),
+                                &CollisionBounds::new(
+                                    Vec3A::new(0.0, 0.0, 0.0),
+                                    Vec3A::new(1.0, 1.0, 1.0),
+                                ),
+                                Vec3A::new(
+                                    offset_pos.pos.x as f32,
+                                    offset_pos.pos.y as f32,
+                                    offset_pos.pos.z as f32,
                                 ),
                             )
                         })

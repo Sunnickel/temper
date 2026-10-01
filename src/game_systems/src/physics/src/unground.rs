@@ -1,16 +1,15 @@
+use super::collisions::is_solid_block;
 use bevy_ecs::message::MessageReader;
 use bevy_ecs::prelude::{Has, Query, Res, With};
-use bevy_math::IVec3;
 use temper_components::player::grounded::OnGround;
 use temper_components::player::position::Position;
+use temper_core::pos::BlockPos;
 use temper_entities::PhysicalRegistry;
 use temper_entities::components::{Baby, EntityMetadata};
 use temper_entities::markers::HasCollisions;
 use temper_messages::BlockBrokenEvent;
 use temper_state::GlobalStateResource;
 use tracing::trace;
-
-use super::collisions::is_solid_block;
 
 /// System that ungrounds entities when blocks are broken beneath them.
 /// This runs only when BlockBrokenEvent messages are received, avoiding
@@ -38,7 +37,7 @@ pub fn handle(
                 continue;
             };
             // Skip entities that aren't grounded
-            if !grounded.0 {
+            if !grounded.currently_grounded {
                 continue;
             }
 
@@ -79,7 +78,7 @@ pub fn handle(
                             continue;
                         }
 
-                        let check_pos = IVec3::new(x, feet_y, z);
+                        let check_pos = BlockPos::of(x, feet_y, z);
                         if is_solid_block(&state.0, check_pos) {
                             has_support = true;
                             break;
@@ -96,7 +95,7 @@ pub fn handle(
                         "Un-grounding entity at {:?} - no support remaining",
                         pos.coords
                     );
-                    grounded.0 = false;
+                    grounded.currently_grounded = false;
                 } else {
                     trace!(
                         "Entity at {:?} still has support after block break",

@@ -1,6 +1,7 @@
 use crate::bounds::CollisionBounds;
 use crate::entity_identity::Identity;
 use crate::game_id::GameID;
+use crate::last_synced_position::LastSyncedPosition;
 use crate::player::bossbar_sender::BossbarSender;
 use crate::player::chunk_receiver::ChunkReceiver;
 use crate::player::entity_tracker::EntityTracker;
@@ -9,6 +10,7 @@ use crate::player::player_marker::PlayerMarker;
 use crate::player::player_properties::PlayerProperties;
 use crate::player::position::Position;
 use crate::player::rotation::Rotation;
+use crate::player::velocity::Velocity;
 use crate::{
     active_effects::ActiveEffects,
     health::Health,
@@ -38,6 +40,9 @@ pub struct PlayerBundle {
     // Position/World
     pub position: Position,
     pub rotation: Rotation,
+    /// Not really used since player physics are a pain to do server-side
+    pub velocity: Velocity,
+    pub last_synced_position: LastSyncedPosition,
     pub on_ground: OnGround,
     pub chunk_receiver: ChunkReceiver,
     pub collision_bounds: CollisionBounds,
@@ -61,7 +66,7 @@ pub struct PlayerBundle {
     // Permissions
     pub permissions: PlayerPermission,
 
-    // Player Marker
+    // Markers
     pub player_marker: PlayerMarker,
 
     // Bossbar Sender

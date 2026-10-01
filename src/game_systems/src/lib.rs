@@ -48,9 +48,23 @@ fn register_tick_systems(schedule: &mut Schedule) {
     schedule.add_systems(packets::player_action::handle);
     schedule.add_systems(packets::player_command::handle);
     schedule.add_systems(packets::player_input::handle);
-    schedule.add_systems(packets::set_player_position::handle);
-    schedule.add_systems(packets::set_player_position_and_rotation::handle);
-    schedule.add_systems(packets::set_player_rotation::handle);
+    schedule.add_systems(
+        (
+            physics::ground_state::snapshot,
+            packets::set_player_position::handle,
+            packets::set_player_position_and_rotation::handle,
+            packets::set_player_rotation::handle,
+            physics::unground::handle,
+            physics::gravity::handle,
+            physics::drag::handle,
+            physics::friction::handle,
+            physics::velocity::handle,
+            physics::collisions::handle,
+            physics::chunk_boundary::handle,
+            background::cross_chunk_border::cross_chunk_border,
+        )
+            .chain(),
+    );
     schedule.add_systems(packets::swing_arm::handle);
     schedule.add_systems(packets::update_survival_mode_slot::handle);
     schedule.add_systems(packets::close_container::handle);
@@ -137,19 +151,6 @@ fn register_tick_systems(schedule: &mut Schedule) {
     schedule.add_systems(background::generate_spawn_positions::generate_spawn_positions);
     schedule.add_systems(background::death_message::send_death_message);
 
-    schedule.add_systems(
-        (
-            physics::unground::handle,
-            physics::gravity::handle,
-            physics::drag::handle,
-            physics::friction::handle,
-            physics::velocity::handle,
-            physics::collisions::handle,
-            physics::chunk_boundary::handle,
-            background::cross_chunk_border::cross_chunk_border,
-        )
-            .chain(),
-    );
     mobs::register_tick_systems(schedule);
 
     schedule.add_systems(world::particles::handle);

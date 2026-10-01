@@ -77,19 +77,26 @@ macro_rules! define_entity_bundle {
         }
 
         impl $bundle_name {
+            pub const fn name() -> &'static str {
+                stringify!($vanilla_type)
+            }
+
             pub fn new(position: Position) -> Self {
                 let metadata = EntityMetadata::from_vanilla(&VanillaEntityType::$vanilla_type);
                 let combat = CombatProperties::from_metadata(&metadata);
                 let spawn = SpawnProperties::from_metadata(&metadata);
 
                 Self {
-                    identity: Identity::new(None),
+                    identity: Identity::new(Some(Self::name().into_string())),
                     metadata,
                     combat,
                     spawn,
                     rotation: Rotation::default(),
                     velocity: Velocity::zero(),
-                    on_ground: OnGround(false),
+                    on_ground: OnGround {
+                        currently_grounded: false,
+                        was_grounded: false,
+                    },
                     last_synced_position: LastSyncedPosition::from_position(&position),
                     position,
                 }

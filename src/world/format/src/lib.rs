@@ -231,7 +231,7 @@ impl Chunk {
     /// * The [`BlockStateId`] of the block at the requested position. If the position is above the maximum y of the chunk, air is always returned.
     ///   If the position is below the minimum y of the chunk, void air is always returned.
     pub fn get_block(&self, pos: ChunkBlockPos) -> BlockStateId {
-        let section = (pos.y() + -self.height.min_y) / 16;
+        let section = (pos.y().saturating_add(-self.height.min_y)) / 16;
         if section < 0 {
             return block!("void_air");
         }
@@ -254,7 +254,7 @@ impl Chunk {
     ///
     /// * `assert` - Checks to ensure that the given position is in-bounds.
     pub fn set_block(&mut self, pos: ChunkBlockPos, id: BlockStateId) {
-        let section = (pos.y() + -self.height.min_y) / 16;
+        let section = (pos.y().saturating_add(-self.height.min_y)) / 16;
         assert!(section >= 0);
         assert!((section as usize) < self.sections.len());
 

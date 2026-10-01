@@ -257,6 +257,7 @@ paste = "1.0.15"
 maplit = "1.0.2"
 macro_rules_attribute = "0.2.3"
 type_hash = "0.3.0"
+deref-derive = "0.1.0"
 
 # Magic
 dhat = "0.3.3"

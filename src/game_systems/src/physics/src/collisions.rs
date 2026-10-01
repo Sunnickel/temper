@@ -1,215 +1,318 @@
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::prelude::{DetectChanges, Entity, Has, Query, Res, With};
 use bevy_ecs::world::Mut;
-use bevy_math::IVec3;
-use bevy_math::bounding::{Aabb3d, BoundingVolume};
+use bevy_math::Vec3A;
+use bevy_math::bounding::BoundingVolume;
+use std::time::Instant;
+use temper_components::bounds::CollisionBounds;
+use temper_components::entity_identity::Identity;
+use temper_components::player::gamemode::{GameMode, GameModeComponent};
 use temper_components::player::grounded::OnGround;
+use temper_components::player::old_position::OldPosition;
+use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::position::Position;
 use temper_components::player::velocity::Velocity;
 use temper_core::block_properties;
 use temper_core::dimension::Dimension;
-use temper_core::pos::{ChunkBlockPos, ChunkPos};
+use temper_core::pos::{BlockPos, ChunkPos};
 use temper_entities::PhysicalRegistry;
 use temper_entities::components::Baby;
 use temper_entities::components::EntityMetadata;
 use temper_entities::markers::HasCollisions;
 use temper_messages::entity_update::SendEntityUpdate;
 use temper_state::{GlobalState, GlobalStateResource};
+use temper_world::RefChunk;
+use tracing::{debug, error, trace};
 
 type CollisionQueryItem<'a> = (
     Entity,
-    Mut<'a, Velocity>,
+    Option<&'a OldPosition>,
     Mut<'a, Position>,
-    &'a EntityMetadata,
+    Option<&'a EntityMetadata>,
+    Option<&'a mut Velocity>,
+    Option<&'a CollisionBounds>,
+    Option<&'a GameModeComponent>,
     Has<Baby>,
     Mut<'a, OnGround>,
+    &'a Identity,
+    Has<PlayerMarker>,
 );
 
+/// This whole thing is a complete mess since players have unreliable and largely unused velocity
+/// but do have client-side collision prediction and mobs have velocities but no client-side collisions.
 pub fn handle(
     query: Query<CollisionQueryItem, With<HasCollisions>>,
-    mut writer: MessageWriter<SendEntityUpdate>,
+    mut entity_updates_writer: MessageWriter<SendEntityUpdate>,
     state: Res<GlobalStateResource>,
     registry: Res<PhysicalRegistry>,
 ) {
-    for (eid, mut vel, mut pos, metadata, is_baby, mut grounded) in query {
-        let Some(physical) = registry.get_or_adult(metadata.protocol_id(), is_baby) else {
+    for (
+        eid,
+        old_pos,
+        mut pos,
+        metadata,
+        vel,
+        collision_bounds,
+        gamemode,
+        is_baby,
+        mut grounded,
+        identity,
+        is_player,
+    ) in query
+    {
+        if let Some(gamemode) = gamemode
+            && matches!(gamemode.0, GameMode::Spectator)
+        {
             continue;
-        };
-        if pos.is_changed() || vel.is_changed() {
-            // Reset grounded only when the entity is actually moving.
-            // When grounded and at rest, gravity is skipped → vel/pos unchanged → this block
-            // is skipped → grounded keeps its true value, preventing spurious falling.
-            // When the entity jumps or falls, vel/pos change → grounded resets to false here,
-            // then gets set back to true only when the MTV Y-resolution detects a landing.
-            grounded.0 = false;
+        }
+        if pos.is_changed() {
+            let start = Instant::now();
+            let static_hitbox = if let Some(bounds) = collision_bounds {
+                bounds
+            } else {
+                if let Some(meta) = metadata
+                    && let Some(physical) = registry.get_or_adult(meta.protocol_id(), is_baby)
+                {
+                    &physical.bounding_box
+                } else {
+                    debug!(
+                        "Entity {} has no collision bounds and no physical definition, skipping collision check",
+                        eid
+                    );
+                    continue;
+                }
+            };
 
-            // Velocity has already been applied before collisions run, so recover the previous
-            // feet position and catch floors crossed during that velocity step.
-            if vel.vec.y < 0.0 {
-                let old_pos = pos.coords - vel.as_dvec3();
-                let feet_y = f64::from(physical.bounding_box.min.y) + pos.coords.y;
-                let old_feet_y = f64::from(physical.bounding_box.min.y) + old_pos.y;
+            // Players and non-players have opposite update orderings:
+            // - non-players already had Velocity applied, so sweep from `pos - vel -> pos`
+            // - players only have their last observed step, so predict `pos -> pos + delta`.
+            // I'm aware that just guessing a player's next position isn't a good idea, but I don't
+            // have any better ideas that isn't "Do player physics serverside"
+            let (sweep_start_pos, sweep_end_pos, sweep_delta) = if !is_player {
+                if let Some(vel) = &vel {
+                    let end_pos = pos.as_vec3a();
+                    let delta = ***vel;
+                    (end_pos - delta, end_pos, delta)
+                } else {
+                    error!(
+                        "Entity {} has no velocity and is not a player, skipping collision check",
+                        eid
+                    );
+                    continue;
+                }
+            } else if let Some(old_pos) = old_pos {
+                let current_pos = pos.as_vec3a();
+                let delta = (**pos - **old_pos).as_vec3a();
+                (current_pos, current_pos + delta, delta)
+            } else {
+                error!(
+                    "Player {} has no old position, skipping collision check",
+                    eid
+                );
+                continue;
+            };
 
-                let min_x = (f64::from(physical.bounding_box.min.x) + pos.coords.x)
-                    .min(f64::from(physical.bounding_box.min.x) + old_pos.x)
-                    .floor() as i32;
-                let max_x = (f64::from(physical.bounding_box.max.x) + pos.coords.x)
-                    .max(f64::from(physical.bounding_box.max.x) + old_pos.x)
-                    .floor() as i32;
-                let min_z = (f64::from(physical.bounding_box.min.z) + pos.coords.z)
-                    .min(f64::from(physical.bounding_box.min.z) + old_pos.z)
-                    .floor() as i32;
-                let max_z = (f64::from(physical.bounding_box.max.z) + pos.coords.z)
-                    .max(f64::from(physical.bounding_box.max.z) + old_pos.z)
-                    .floor() as i32;
+            let current_hitbox = static_hitbox.translated_by(sweep_start_pos);
+            let next_hitbox = static_hitbox.translated_by(sweep_end_pos);
 
-                let min_y = feet_y.floor() as i32;
-                let max_y = old_feet_y.ceil() as i32 - 1;
+            // Bail out on the raw delta rather than comparing the translated hitboxes -
+            // at typical world coordinates the hitboxes can round to the same f32 value
+            // through floating point cancellation even when a small but real delta exists,
+            // which would wrongly skip collision detection on exactly the ticks (tiny final
+            // approach to a block) where it matters most
+            if sweep_delta == Vec3A::ZERO {
+                continue;
+            }
 
-                'floor_crossing: for y in (min_y..=max_y).rev() {
-                    let surface_y = f64::from(y + 1);
-                    if old_feet_y < surface_y || feet_y > surface_y {
-                        continue;
-                    }
+            // Any block we could hit has to be in here. Pad the scan by a small amount so an entity
+            // resting exactly flush against a block face (e.g. landing perfectly on y=72.0
+            // when the ground block spans [71, 72)) still has that block included - floor/ceil
+            // on the raw bounds would otherwise miss it entirely since it never actually
+            // crosses the boundary, just touches it
+            let max_hitbox = next_hitbox.merge(&current_hitbox);
+            const SCAN_PADDING: f32 = 1e-4;
+            let scan_min = max_hitbox.min - Vec3A::splat(SCAN_PADDING);
+            let scan_max = max_hitbox.max + Vec3A::splat(SCAN_PADDING);
 
-                    for x in min_x..=max_x {
-                        for z in min_z..=max_z {
-                            if is_solid_block(&state.0, IVec3::new(x, y, z)) {
-                                pos.coords.y = surface_y - f64::from(physical.bounding_box.min.y);
-                                vel.vec.y = 0.0;
-                                grounded.0 = true;
-                                break 'floor_crossing;
+            // Behold, some unhinged bullshit to find the first block hit. Don't ask me how it works,
+            // only god and the bottle of Jack Daniel's that got me through this knows, I certainly don't
+            let moving_min0 = current_hitbox.min;
+            let moving_max0 = current_hitbox.max;
+            let mut best_hit: Option<(f32, usize, BlockPos)> = None;
+            let mut possible_hits = 0;
+            let mut loaded_chunk: Option<(ChunkPos, RefChunk<'_>)> = None;
+
+            'scan: for x in scan_min.x.floor() as i32..scan_max.x.ceil() as i32 {
+                for y in scan_min.y.floor() as i32..scan_max.y.ceil() as i32 {
+                    for z in scan_min.z.floor() as i32..scan_max.z.ceil() as i32 {
+                        let block_pos = BlockPos::of(x, y, z);
+                        let chunk_pos = block_pos.chunk();
+
+                        let needs_chunk_load = loaded_chunk
+                            .as_ref()
+                            .is_none_or(|(loaded_pos, _)| *loaded_pos != chunk_pos);
+                        if needs_chunk_load {
+                            let chunk = state
+                                .0
+                                .world
+                                .get_or_generate_chunk(chunk_pos, Dimension::Overworld)
+                                .expect("Failed to load or generate chunk");
+                            loaded_chunk = Some((chunk_pos, chunk));
+                        }
+
+                        let block_state = loaded_chunk
+                            .as_ref()
+                            .expect("Chunk should be loaded")
+                            .1
+                            .get_block(block_pos.chunk_block_pos());
+                        if !block_properties::is_solid(block_state) {
+                            continue;
+                        }
+
+                        possible_hits += 1;
+
+                        let target_min = block_pos.pos.as_vec3a();
+                        let target_max = target_min + Vec3A::ONE;
+
+                        if let Some((entry_time, axis)) = sweep_aabb(
+                            moving_min0,
+                            moving_max0,
+                            target_min,
+                            target_max,
+                            sweep_delta,
+                        ) && best_hit.is_none_or(|(best_time, _, _)| entry_time < best_time)
+                        {
+                            best_hit = Some((entry_time, axis, block_pos));
+
+                            if entry_time == 0.0 {
+                                break 'scan;
                             }
                         }
                     }
                 }
             }
 
-            // Figure out where the entity is going to be next tick
-            let next_pos = pos.coords.as_vec3a() + **vel;
-            let mut collided = false;
-            let mut hit_blocks = vec![];
-
-            // Merge the current and next bounding boxes to get the full area the entity will occupy
-            // This helps catch fast-moving entities that might skip through thin blocks
-            // At really high speeds this will create a very large bounding box, so further optimizations may be needed
-            let current_hitbox = Aabb3d {
-                min: physical.bounding_box.min + pos.coords.as_vec3a(),
-                max: physical.bounding_box.max + pos.coords.as_vec3a(),
-            };
-
-            let next_hitbox = Aabb3d {
-                min: physical.bounding_box.min + next_pos,
-                max: physical.bounding_box.max + next_pos,
-            };
-
-            let merged_hitbox = current_hitbox.merge(&next_hitbox);
-
-            // Get the block positions that the entity's bounding box will occupy
-            let min_block_pos = merged_hitbox.min;
-            let max_block_pos = merged_hitbox.max;
-
-            // Check each block in the bounding box for solidity
-            for x in min_block_pos.x.floor() as i32..=max_block_pos.x.floor() as i32 {
-                for y in min_block_pos.y.floor() as i32..=max_block_pos.y.floor() as i32 {
-                    for z in min_block_pos.z.floor() as i32..=max_block_pos.z.floor() as i32 {
-                        let block_pos = IVec3::new(x, y, z);
-                        if is_solid_block(&state.0, block_pos) {
-                            collided = true;
-                            hit_blocks.push(block_pos);
-                        }
-                    }
+            if let Some((_entry_time, axis, collided_block)) = best_hit {
+                // Ground/ceiling contact needs to be recorded regardless of whether we can
+                // correct the entity's position - players are client-authoritative so we
+                // never touch their Position below, but OnGround still has to reflect that
+                // their reported movement did hit something on the y-axis.
+                if axis == 1 {
+                    grounded.currently_grounded = true;
                 }
-            }
-            // Resolve collisions using Minimum Translation Vector (MTV):
-            // compute the penetration depth on each axis and push out along the
-            // smallest one, zeroing only that velocity component. This preserves
-            // jump velocity when hitting a wall horizontally.
-            if collided {
-                hit_blocks.sort_by(|a, b| {
-                    let dist_a = (a.as_dvec3() - pos.coords).length_squared();
-                    let dist_b = (b.as_dvec3() - pos.coords).length_squared();
-                    dist_a.partial_cmp(&dist_b).unwrap()
-                });
-                let first_hit = hit_blocks.first().expect("At least one hit block expected");
 
-                let entity_min = physical.bounding_box.min + pos.coords.as_vec3a();
-                let entity_max = physical.bounding_box.max + pos.coords.as_vec3a();
-                let block_min = first_hit.as_vec3a();
-                let block_max = (first_hit + IVec3::ONE).as_vec3a();
+                if axis != 1 || grounded.just_landed() {
+                    trace!(
+                        "{} Hit block at {}, {} blocks checked, took {:?}",
+                        identity.name.as_ref().expect("Entity has no name"),
+                        collided_block,
+                        possible_hits,
+                        Instant::now() - start
+                    );
+                }
 
-                // Penetration depth on each axis from both sides
-                let ox_pos = entity_max.x - block_min.x; // entity entering from -X
-                let ox_neg = block_max.x - entity_min.x; // entity entering from +X
-                let oy_pos = entity_max.y - block_min.y; // entity entering from below
-                let oy_neg = block_max.y - entity_min.y; // entity entering from above
-                let oz_pos = entity_max.z - block_min.z; // entity entering from -Z
-                let oz_neg = block_max.z - entity_min.z; // entity entering from +Z
+                // If it's not a player we need to set their position to not be colliding with the block.
+                // If we ever get around to doing an anticheat system we can do server-side player
+                // collision resolution but for now we just let the client handle it.
+                if !is_player {
+                    // Only the axis that actually collided needs correcting - the other two
+                    // should keep their full intended movement (this is what lets an entity
+                    // slide along a wall instead of stuttering to a stop diagonally).
+                    let mut resolved = pos.as_vec3a();
 
-                // Only resolve if there is real penetration on all three axes
-                if ox_pos > 0.0
-                    && ox_neg > 0.0
-                    && oy_pos > 0.0
-                    && oy_neg > 0.0
-                    && oz_pos > 0.0
-                    && oz_neg > 0.0
-                {
-                    let mx = ox_pos.min(ox_neg);
-                    let my = oy_pos.min(oy_neg);
-                    let mz = oz_pos.min(oz_neg);
-
-                    if mx <= my && mx <= mz {
-                        let push = if ox_pos < ox_neg { -ox_pos } else { ox_neg };
-                        pos.coords.x += f64::from(push);
-                        vel.vec.x = 0.0;
-                    } else if my <= mx && my <= mz {
-                        let push = if oy_pos < oy_neg { -oy_pos } else { oy_neg };
-                        pos.coords.y += f64::from(push);
-                        vel.vec.y = 0.0;
-                        if oy_neg <= oy_pos {
-                            // Entity came from above: it's landing on the block
-                            grounded.0 = true;
-                        }
+                    // Snap the blocking axis directly to the block's boundary rather than
+                    // trusting the interpolated `entry_time`, so we land exactly flush against
+                    // it instead of a hair short/long due to the division above.
+                    let block_min = collided_block.pos.as_vec3a();
+                    resolved[axis] = if sweep_delta[axis] > 0.0 {
+                        block_min[axis] - static_hitbox.max[axis]
                     } else {
-                        let push = if oz_pos < oz_neg { -oz_pos } else { oz_neg };
-                        pos.coords.z += f64::from(push);
-                        vel.vec.z = 0.0;
+                        block_min[axis] + 1.0 - static_hitbox.min[axis]
+                    };
+
+                    pos.coords = resolved.as_dvec3();
+
+                    // Zero out velocity on the axis we actually collided on so we don't just
+                    // re-collide (and re-correct) again next tick.
+                    if let Some(mut vel) = vel {
+                        vel.vec[axis] = 0.0;
                     }
                 }
             }
 
-            // Floor contact check: catches the "exactly at surface" case that the MTV
-            // misses when vel.y = 0. This happens when the entity moves horizontally
-            // while standing: the merged hitbox uses floor(65.0) = 65, so block y=64
-            // is excluded, no collision fires, and grounded stays false. We check the
-            // block just below the entity's feet explicitly.
-            if !grounded.0 && vel.vec.y <= 0.0 {
-                let feet_y = f64::from(physical.bounding_box.min.y) + pos.coords.y;
-                let floor_block_y = (feet_y - 1e-3).floor() as i32;
-                let cx = pos.coords.x.floor() as i32;
-                let cz = pos.coords.z.floor() as i32;
-                if is_solid_block(&state.0, IVec3::new(cx, floor_block_y, cz)) {
-                    let surface_y = f64::from(floor_block_y + 1);
-                    if (feet_y - surface_y).abs() < 0.05 {
-                        pos.coords.y = surface_y - f64::from(physical.bounding_box.min.y);
-                        vel.vec.y = 0.0;
-                        grounded.0 = true;
-                    }
-                }
-            }
-
-            writer.write(SendEntityUpdate(eid));
+            entity_updates_writer.write(SendEntityUpdate(eid));
         }
     }
 }
 
-pub fn is_solid_block(state: &GlobalState, pos: IVec3) -> bool {
-    let chunk_coordinates = ChunkPos::from(pos.as_dvec3());
+pub fn is_solid_block(state: &GlobalState, pos: BlockPos) -> bool {
+    let chunk_coordinates = pos.chunk();
     let block_state = state
         .world
         .get_or_generate_mut(chunk_coordinates, Dimension::Overworld)
         .expect("Failed to load or generate chunk")
-        .get_block(ChunkBlockPos::from(pos));
+        .get_block(pos.chunk_block_pos());
 
     block_properties::is_solid(block_state)
+}
+
+/// Analytic swept-AABB test: given a moving box at `t=0` (`moving_min0`/`moving_max0`)
+/// travelling by `velocity` over `t` in `[0, 1]`, finds the exact time it first touches the
+/// static `target` box, along with which axis (0=x, 1=y, 2=z) the contact happened on.
+/// Returns `None` if the boxes never touch during the sweep.
+fn sweep_aabb(
+    moving_min0: Vec3A,
+    moving_max0: Vec3A,
+    target_min: Vec3A,
+    target_max: Vec3A,
+    velocity: Vec3A,
+) -> Option<(f32, usize)> {
+    let mut entry = [f32::NEG_INFINITY; 3];
+    let mut exit = [f32::INFINITY; 3];
+    let mut any_moving_axis_constrained = false;
+
+    for axis in 0..3 {
+        let v = velocity[axis];
+        if v > 0.0 {
+            if moving_min0[axis] >= target_max[axis] {
+                // Already flush against (or past) the target's far face and moving further
+                // away - e.g. standing on top of a block and jumping off it.
+            }
+            entry[axis] = (target_min[axis] - moving_max0[axis]) / v;
+            exit[axis] = (target_max[axis] - moving_min0[axis]) / v;
+            any_moving_axis_constrained = true;
+        } else if v < 0.0 {
+            if moving_max0[axis] <= target_min[axis] {
+                // Same thing for near face
+                continue;
+            }
+            entry[axis] = (target_max[axis] - moving_min0[axis]) / v;
+            exit[axis] = (target_min[axis] - moving_max0[axis]) / v;
+            any_moving_axis_constrained = true;
+        } else if moving_max0[axis] <= target_min[axis] || moving_min0[axis] >= target_max[axis] {
+            // Never overlapping on this axis regardless of travel on the other two.
+            return None;
+        }
+    }
+
+    if !any_moving_axis_constrained {
+        return None;
+    }
+
+    let entry_time = entry[0].max(entry[1]).max(entry[2]);
+    let exit_time = exit[0].min(exit[1]).min(exit[2]);
+
+    if entry_time > exit_time || entry_time > 1.0 || exit_time < 0.0 {
+        return None;
+    }
+
+    let axis = if entry[0] >= entry[1] && entry[0] >= entry[2] {
+        0
+    } else if entry[1] >= entry[2] {
+        1
+    } else {
+        2
+    };
+
+    Some((entry_time.max(0.0), axis))
 }

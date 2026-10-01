@@ -10,6 +10,7 @@ pub mod grounded;
 pub mod hunger;
 pub mod keepalive;
 pub mod offline_player_data;
+pub mod old_position;
 pub mod pending_events;
 pub mod player_bundle;
 pub mod player_marker;

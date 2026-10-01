@@ -1,77 +1,6 @@
+use crate::bounds::CollisionBounds;
 use bevy_ecs::prelude::Component;
-use bevy_math::bounding::Aabb3d;
-use serde::{Deserialize, Serialize};
-use std::ops::{Deref, DerefMut};
 use temper_data::generated::entities::EntityType as VanillaEntityType;
-
-/// Entity bounding box (collision box).
-///
-/// Represents the volume occupied by an entity in the world.
-/// Used for collision detection and physics.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct BoundingBox {
-    aabb: Aabb3d,
-}
-
-impl Deref for BoundingBox {
-    type Target = Aabb3d;
-
-    fn deref(&self) -> &Self::Target {
-        &self.aabb
-    }
-}
-
-impl DerefMut for BoundingBox {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.aabb
-    }
-}
-
-impl BoundingBox {
-    /// Creates a new bounding box from vanilla dimensions.
-    ///
-    /// # Arguments
-    ///
-    /// * `dimension` - Dimensions [width, height] from temper-data
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use temper_data::generated::entities::EntityType as VanillaEntityType;
-    ///
-    /// let bbox = BoundingBox::from_vanilla_dimension(VanillaEntityType::PIG.dimension);
-    /// assert_eq!(bbox.half_width, 0.45); // 0.9 / 2
-    /// assert_eq!(bbox.height, 0.9);
-    /// ```
-    pub const fn from_vanilla_dimension(dimension: [f32; 2]) -> Self {
-        Self {
-            aabb: Aabb3d {
-                max: bevy_math::Vec3A::new(dimension[0] / 2.0, dimension[1], dimension[0] / 2.0),
-                min: bevy_math::Vec3A::new(-(dimension[0] / 2.0), 0.0, -(dimension[0] / 2.0)),
-            },
-        }
-    }
-
-    /// Returns the total width of the bounding box.
-    pub fn width(&self) -> f64 {
-        f64::from(self.aabb.max.x - self.aabb.min.x)
-    }
-
-    /// Returns the height of the bounding box.
-    pub fn height(&self) -> f64 {
-        f64::from(self.aabb.max.y - self.aabb.min.y)
-    }
-
-    /// Returns the depth of the bounding box.
-    pub fn depth(&self) -> f64 {
-        f64::from(self.aabb.max.z - self.aabb.min.z)
-    }
-
-    /// Returns the volume of the bounding box in cubic blocks.
-    pub fn volume(&self) -> f64 {
-        self.width() * self.height() * self.depth()
-    }
-}
 
 /// Physical properties of an entity.
 ///
@@ -96,7 +25,7 @@ pub struct PhysicalProperties {
     /// Bounding box of the entity for collisions.
     ///
     /// Can change if the entity is a baby, crouching, etc.
-    pub bounding_box: BoundingBox,
+    pub bounding_box: CollisionBounds,
 
     /// Eye height in blocks from the entity's feet.
     ///
@@ -127,7 +56,7 @@ impl PhysicalProperties {
         let data = metadata.vanilla_data();
 
         Self {
-            bounding_box: BoundingBox::from_vanilla_dimension(data.dimension),
+            bounding_box: CollisionBounds::from_vanilla_dimension(data.dimension),
             eye_height: data.eye_height,
             fire_immune: data.fire_immune,
         }
@@ -138,7 +67,7 @@ impl PhysicalProperties {
     /// Shortcut version that doesn't require creating EntityMetadata first.
     pub fn from_vanilla(data: &'static VanillaEntityType) -> Self {
         Self {
-            bounding_box: BoundingBox::from_vanilla_dimension(data.dimension),
+            bounding_box: CollisionBounds::from_vanilla_dimension(data.dimension),
             eye_height: data.eye_height,
             fire_immune: data.fire_immune,
         }
@@ -153,16 +82,10 @@ impl PhysicalProperties {
         let width = self.bounding_box.width() * scale;
         let height = self.bounding_box.height() * scale;
         let depth = self.bounding_box.depth() * scale;
-        self.bounding_box = BoundingBox {
-            aabb: Aabb3d {
-                min: bevy_math::Vec3A::new(-(width as f32) / 2.0, 0.0, -(depth as f32) / 2.0),
-                max: bevy_math::Vec3A::new(
-                    (width as f32) / 2.0,
-                    height as f32,
-                    (depth as f32) / 2.0,
-                ),
-            },
-        };
+        self.bounding_box = CollisionBounds::new(
+            bevy_math::Vec3A::new(-(width as f32) / 2.0, 0.0, -(depth as f32) / 2.0),
+            bevy_math::Vec3A::new((width as f32) / 2.0, height as f32, (depth as f32) / 2.0),
+        );
         self.eye_height = (f64::from(self.eye_height) * scale) as f32;
     }
 }

@@ -110,6 +110,10 @@ pub fn is_non_solid_decoration(name: &str) -> bool {
             | "tripwire"
             | "tripwire_hook"
             | "structure_void"
+            | "white_tulip"
+            | "pink_tulip"
+            | "orange_tulip"
+            | "red_tulip"
     ) {
         return true;
     }
