@@ -69,14 +69,14 @@ pub const PROTOCOL_VERSION_26_2: i32 = 776;
 /// - Protocol version mismatches and cannot be gracefully handled.
 /// - An invalid or unsupported handshake state is encountered.
 pub async fn handle_handshake(
-    mut conn_read: &mut EncryptedReader<OwnedReadHalf>,
+    conn_read: &mut EncryptedReader<OwnedReadHalf>,
     conn_write: &StreamWriter,
     state: GlobalState,
 ) -> Result<(bool, LoginResult), NetError> {
     // Build a PacketSkeleton from the first inbound packet.
     // This handles framing, reading packet ID and payload.
     let mut skel = PacketSkeleton::new(
-        &mut conn_read,
+        conn_read,
         conn_write.compress.load(Ordering::Relaxed),
         temper_protocol::ConnState::Handshake,
         state.clone(),
