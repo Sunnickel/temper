@@ -10,7 +10,7 @@ use type_hash::TypeHash;
 use uuid::Uuid;
 
 pub fn check_players(state: &ServerState) -> Result<(), String> {
-    let env = state.world.storage_backend.env.lock();
+    let env = state.world.chunks.storage_backend.env();
     let txn = env
         .read_txn()
         .map_err(|e| format!("Failed to create read transaction: {}", e))?;
@@ -93,7 +93,7 @@ pub fn check_players(state: &ServerState) -> Result<(), String> {
             continue;
         }
 
-        if let Err(e) = bitcode::decode::<OfflinePlayerData>(value) {
+        if let Err(e) = bitcode::deserialize::<OfflinePlayerData>(value) {
             progress_bar.finish();
             error!("Player {} failed to decode: {}", player_uuid, e);
             error!(

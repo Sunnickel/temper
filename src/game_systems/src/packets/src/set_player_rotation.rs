@@ -24,7 +24,7 @@ pub fn handle(
 
             // Update components
             *rot = new_rot;
-            *ground = OnGround(on_ground);
+            ground.set_grounded(on_ground);
 
             // Send movement message for broadcasting
             movement_messages.write(movement);

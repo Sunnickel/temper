@@ -4,7 +4,7 @@ use block::matches;
 use proc_macro::TokenStream;
 
 mod block;
-mod commands;
+mod command_derive;
 mod helpers;
 mod item;
 mod misc;
@@ -13,6 +13,7 @@ mod net;
 mod profiling;
 mod registries_packets;
 mod static_loading;
+mod update_tags;
 
 #[proc_macro_attribute]
 pub fn profile(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -59,30 +60,10 @@ pub fn lookup_packet(input: TokenStream) -> TokenStream {
 }
 // #=================== PACKETS ===================#
 
-/// Creates a command.
-///
-/// A command function can take a sender argument, multiple command arguments and bevy system arguments.
-///
-/// The optional sender argument is marked with `#[sender]` attribute and command arguments are marked with
-/// the `#[arg]` attribute. Any other argument is treated as a bevy system arg.
-///
-/// Usage example:
-///
-/// ```ignore
-/// #[command("hello")]
-/// fn command(#[sender] sender: Sender) {
-///     sender.send_message(TextComponent::from("Hello, world!"), false);
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
-    commands::command(attr, input)
+#[proc_macro_derive(Command, attributes(command, arg, literal, subcommand, permission))]
+pub fn command_derive(input: TokenStream) -> TokenStream {
+    command_derive::derive(input)
 }
-
-// #[proc_macro_attribute]
-// pub fn arg(attr: TokenStream, input: TokenStream) -> TokenStream {
-//     commands::arg(attr, input)
-// }
 
 /// Get a registry entry from the registries.json file.
 /// returns protocol_id (as u64) of the specified entry.
@@ -94,6 +75,11 @@ pub fn get_registry_entry(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn build_registry_packets(input: TokenStream) -> TokenStream {
     registries_packets::build_mapping(input)
+}
+
+#[proc_macro]
+pub fn build_update_tags(input: TokenStream) -> TokenStream {
+    update_tags::build_mapping(input)
 }
 
 /// A macro to lookup block state IDs at compile time.
@@ -155,6 +141,22 @@ pub fn match_block(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Discriminant)]
 pub fn enum_discriminant(input: TokenStream) -> TokenStream {
     misc::discriminant::enum_discriminant_derive(input)
+}
+
+/// Derive macro to convert a discriminant value back into a field-less enum variant.
+/// Usage:
+/// ```ignore
+/// #[derive(InverseDiscriminant)]
+/// enum MyEnum {
+///     VariantA,
+///     VariantB,
+/// }
+/// assert_eq!(MyEnum::from_discriminant(1usize), Some(MyEnum::VariantB));
+/// assert_eq!(MyEnum::from_discriminant(2usize), None);
+/// ```
+#[proc_macro_derive(InverseDiscriminant)]
+pub fn inverse_enum_discriminant(input: TokenStream) -> TokenStream {
+    misc::discriminant::inverse_enum_discriminant_derive(input)
 }
 
 /// A macro to lookup item IDs at compile time.

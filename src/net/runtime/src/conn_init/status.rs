@@ -37,7 +37,7 @@ use tracing::warn;
 /// - `true`: Indicates that the connection should be closed after responding.
 /// - `LoginResult`: Contains no player identity or compression because this is a stateless query.
 pub(super) async fn status(
-    mut conn_read: &mut EncryptedReader<OwnedReadHalf>,
+    conn_read: &mut EncryptedReader<OwnedReadHalf>,
     conn_write: &StreamWriter,
     state: GlobalState,
 ) -> Result<(bool, LoginResult), NetError> {
@@ -45,7 +45,7 @@ pub(super) async fn status(
 
     // Read next incoming packet in "status" connection state
     let mut skel = PacketSkeleton::new(
-        &mut conn_read,
+        conn_read,
         false,
         temper_protocol::ConnState::Status,
         state.clone(),
@@ -80,13 +80,8 @@ pub(super) async fn status(
 
     // ---- Phase 3: Wait for Ping Request ----
 
-    let mut skel = PacketSkeleton::new(
-        &mut conn_read,
-        false,
-        temper_protocol::ConnState::Status,
-        state,
-    )
-    .await?;
+    let mut skel =
+        PacketSkeleton::new(conn_read, false, temper_protocol::ConnState::Status, state).await?;
 
     let expected_id = lookup_packet!("status", "serverbound", "ping_request");
 
@@ -115,6 +110,7 @@ pub(super) async fn status(
         true,
         LoginResult {
             player_identity: None,
+            game_id: None,
             compression: false,
             client_information_component: None,
             player_properties: None,
@@ -178,8 +174,8 @@ fn get_server_status(state: &GlobalState) -> String {
 
     // Protocol info
     let version = structs::Version {
-        name: "1.21.8",
-        protocol: crate::conn_init::PROTOCOL_VERSION_1_21_8 as u16,
+        name: "26.2",
+        protocol: crate::conn_init::PROTOCOL_VERSION_26_2 as u16,
     };
 
     // Collect up to 5 players from the active player list

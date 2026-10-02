@@ -1,20 +1,22 @@
 use bevy_ecs::prelude::{Commands, MessageWriter, Res};
+use bevy_math::Vec3A;
 use std::time::Instant;
 use temper_components::bounds::CollisionBounds;
-use temper_components::player::abilities::PlayerAbilities;
+use temper_components::last_synced_position::LastSyncedPosition;
 use temper_components::player::bossbar_sender::BossbarSender;
 use temper_components::player::chunk_receiver::ChunkReceiver;
 use temper_components::player::entity_tracker::EntityTracker;
-use temper_components::player::gamemode::GameMode;
 use temper_components::player::grounded::OnGround;
 use temper_components::player::keepalive::KeepAliveTracker;
 use temper_components::player::player_marker::PlayerMarker;
 use temper_components::player::teleport_tracker::TeleportTracker;
+use temper_components::player::velocity::Velocity;
 use temper_components::player::{
     gamemode::GameModeComponent, offline_player_data::OfflinePlayerData,
     pending_events::PendingPlayerJoin, player_bundle::PlayerBundle, sneak::SneakState,
     swimming::SwimmingState,
 };
+use temper_entities::HasCollisions;
 use temper_inventories::hotbar::Hotbar;
 use temper_messages::chunk_calc::ChunkCalc;
 use temper_net_runtime::connection::DisconnectHandle;
@@ -35,7 +37,7 @@ pub fn accept_new_connections(
         let return_sender = new_connection.entity_return;
 
         // --- 1. Load all data from cache ---
-        let offline_data = match state
+        let offline_data_opt = match state
             .0
             .world
             .load_player_data(new_connection.player_identity.uuid)
@@ -54,21 +56,23 @@ pub fn accept_new_connections(
                 None
             }
         };
-        let player_data = offline_data.unwrap_or(OfflinePlayerData {
-            gamemode: GameMode::from_string(&state.0.config.default_gamemode).unwrap(),
-            abilities: PlayerAbilities::for_game_mode(
-                GameMode::from_string(&state.0.config.default_gamemode).unwrap(),
-            ),
-            ..Default::default()
-        });
+
+        let player_data: OfflinePlayerData = offline_data_opt.expect(
+            "No offline player data found for player, this should never happen as we create it on first join",
+        );
+
         // --- 2. Build the PlayerBundle ---
+        let position = player_data.position.into();
         let player_bundle = PlayerBundle {
             identity: new_connection.player_identity.clone(),
+            game_id: new_connection.game_id,
             abilities: player_data.abilities,
             player_properties: new_connection.player_properties,
             gamemode: GameModeComponent(player_data.gamemode),
-            position: player_data.position.into(),
+            position,
             rotation: player_data.rotation,
+            velocity: Velocity::zero(),
+            last_synced_position: LastSyncedPosition::from_position(&position),
             on_ground: OnGround::default(),
             chunk_receiver: ChunkReceiver::default(),
             inventory: player_data.inventory,
@@ -80,14 +84,10 @@ pub fn accept_new_connections(
             active_effects: player_data.active_effects,
             swimming: SwimmingState::default(),
             sneak: SneakState::default(),
-            collision_bounds: CollisionBounds {
-                x_offset_start: -0.3,
-                x_offset_end: 0.3,
-                y_offset_start: 0.0,
-                y_offset_end: 1.8,
-                z_offset_start: -0.3,
-                z_offset_end: 0.3,
-            },
+            collision_bounds: CollisionBounds::new(
+                Vec3A::new(-0.3, 0.0, -0.3),
+                Vec3A::new(0.3, 1.8, 0.3),
+            ),
             player_marker: PlayerMarker,
             entity_tracker: EntityTracker::default(),
             permissions: new_connection.permissions,
@@ -116,6 +116,7 @@ pub fn accept_new_connections(
             TeleportTracker {
                 waiting_for_confirm: false,
             },
+            HasCollisions,
         ));
 
         let entity_id = entity_commands.id();

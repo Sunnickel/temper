@@ -1,6 +1,7 @@
-use bevy_ecs::prelude::Query;
+use bevy_ecs::prelude::{Commands, Entity, Query};
 use bevy_ecs::prelude::{MessageWriter, Res};
 use temper_components::player::grounded::OnGround;
+use temper_components::player::old_position::OldPosition;
 use temper_components::player::position::Position;
 use temper_components::player::rotation::Rotation;
 use temper_components::player::teleport_tracker::TeleportTracker;
@@ -13,14 +14,17 @@ pub fn handle(
     mut movement_messages: MessageWriter<Movement>,
     mut chunk_calc_messages: MessageWriter<ChunkCalc>,
     mut query: Query<(
+        Entity,
         &mut Position,
         &mut Rotation,
         &mut OnGround,
         &mut TeleportTracker,
+        Option<&mut OldPosition>,
     )>,
+    mut commands: Commands,
 ) {
     for (event, eid) in receiver.0.try_iter() {
-        if let Ok((mut pos, mut rot, mut ground, tracker)) = query.get_mut(eid) {
+        if let Ok((entity, mut pos, mut rot, mut ground, tracker, old_pos)) = query.get_mut(eid) {
             if tracker.waiting_for_confirm {
                 // Ignore position updates while waiting for teleport confirmation
                 continue;
@@ -30,8 +34,8 @@ pub fn handle(
             let on_ground = event.flags & 0x01 != 0;
 
             // Check if chunk changed
-            let old_chunk = (pos.x as i32 >> 4, pos.z as i32 >> 4);
-            let new_chunk = (new_pos.x as i32 >> 4, new_pos.z as i32 >> 4);
+            let old_chunk = pos.chunk();
+            let new_chunk = new_pos.chunk();
             if old_chunk != new_chunk {
                 chunk_calc_messages.write(ChunkCalc(eid));
             }
@@ -44,12 +48,17 @@ pub fn handle(
 
             // Update components
             if pos.coords != new_pos.coords {
+                if let Some(mut old_pos) = old_pos {
+                    *old_pos = OldPosition::from(*pos);
+                } else {
+                    commands.entity(entity).insert(OldPosition::from(*pos));
+                }
                 *pos = new_pos;
             }
             if rot.yaw != new_rot.yaw || rot.pitch != new_rot.pitch {
                 *rot = new_rot;
             }
-            *ground = OnGround(on_ground);
+            ground.set_grounded(on_ground);
 
             // Send movement message for broadcasting
             movement_messages.write(movement);

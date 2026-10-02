@@ -2,6 +2,7 @@ pub mod player_list;
 
 use crate::player_list::PlayerList;
 use bevy_ecs::prelude::Resource;
+use crossbeam_queue::ArrayQueue;
 use dashmap::DashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -22,6 +23,7 @@ pub struct ServerState {
     pub performance: Mutex<ServerPerformance>,
     pub blocked_ips: DashSet<String>,
     pub config: ServerConfig,
+    pub spawn_positions: ArrayQueue<(f64, f64, f64)>,
 }
 
 pub type GlobalState = Arc<ServerState>;
@@ -31,13 +33,18 @@ pub struct GlobalStateResource(pub GlobalState);
 
 /// Creates a minimal GlobalStateResource for testing with a temporary database
 pub fn create_test_state() -> (GlobalStateResource, TempDir) {
+    create_test_state_with_generator("normal".to_string())
+}
+
+pub fn create_test_state_with_generator(generator: String) -> (GlobalStateResource, TempDir) {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let db_path = temp_dir.path().to_path_buf();
 
-    let config = create_dummy_config();
+    let mut config = create_dummy_config();
+    config.world_gen.generator = generator;
 
     let server_state = ServerState {
-        world: World::new(&db_path, 0, &config),
+        world: World::new(&db_path, &config).unwrap(),
         shut_down: false.into(),
         players: PlayerList::default(),
         thread_pool: ThreadPool::new(),
@@ -45,6 +52,7 @@ pub fn create_test_state() -> (GlobalStateResource, TempDir) {
         performance: ServerPerformance::new(20).into(),
         blocked_ips: DashSet::new(),
         config,
+        spawn_positions: ArrayQueue::new(500),
     };
 
     let global_state = Arc::new(server_state);
@@ -54,10 +62,9 @@ pub fn create_test_state() -> (GlobalStateResource, TempDir) {
 /// Creates the initial server state with all required components.
 pub fn create_state(start_time: Instant) -> ServerState {
     // Fixed seed for world generation. This seed ensures you spawn above land at the default spawn point.
-    const SEED: u64 = 380;
     let config = create_config();
     ServerState {
-        world: World::new(&config.database.db_path, SEED, &config),
+        world: World::new(&config.database.db_path, &config).expect("Failed to create world"),
         shut_down: false.into(),
         players: PlayerList::default(),
         thread_pool: ThreadPool::new(),
@@ -66,5 +73,6 @@ pub fn create_state(start_time: Instant) -> ServerState {
         // This is later filled by the blocklist function at src/app/runtime/src/blocklist.rs
         blocked_ips: DashSet::new(),
         config,
+        spawn_positions: ArrayQueue::new(20),
     }
 }
