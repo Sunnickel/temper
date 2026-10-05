@@ -41,7 +41,14 @@ fn build_heightmap_interpolated(pos: ChunkPos, noise: &NoiseGenerator) -> [i32; 
     let idx = |ix: usize, iz: usize| -> usize { iz * gx + ix };
 
     let mut grid = vec![0.0f64; gx * gz];
-    noise.fill_height_noise(pos.x() * 16, pos.z() * 16, HEIGHTMAP_STEP_XZ, gx, gz, &mut grid);
+    noise.fill_height_noise(
+        pos.x() * 16,
+        pos.z() * 16,
+        HEIGHTMAP_STEP_XZ,
+        gx,
+        gz,
+        &mut grid,
+    );
 
     let mut out = [0i32; 16 * 16];
 

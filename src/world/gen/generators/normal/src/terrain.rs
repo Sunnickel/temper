@@ -1,5 +1,5 @@
-use quick_noise::simd::dispatch_simd;
 use quick_noise::simd::Arch;
+use quick_noise::simd::dispatch_simd;
 use quick_noise::{BatchNoise, Fbm, Grid, Perlin, Simplex};
 
 #[derive(Clone, Copy)]
@@ -411,7 +411,9 @@ mod tests {
         noise.fill_height_noise(0, 0, 4, 5, 5, &mut samples);
 
         let legacy: Vec<_> = (0..5)
-            .flat_map(|z| (0..5).map(move |x| legacy_height_noise(0, f64::from(x * 4), f64::from(z * 4))))
+            .flat_map(|z| {
+                (0..5).map(move |x| legacy_height_noise(0, f64::from(x * 4), f64::from(z * 4)))
+            })
             .collect();
 
         let avg_delta = samples
