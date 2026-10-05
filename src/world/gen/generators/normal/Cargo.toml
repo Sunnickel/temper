@@ -7,13 +7,15 @@ edition = "2024"
 gen-core = { path = "../../core" }
 gen-structures = { path = "../../structures" }
 quick-noise = { workspace = true }
-noise = { workspace = true }
 rand = { workspace = true }
 temper-core = { workspace = true }
 temper-world-format = { workspace = true }
 bevy_math = { workspace = true }
 thiserror = { workspace = true }
 temper-macros = { workspace = true }
+
+[dev-dependencies]
+noise = { workspace = true }
 
 [lints]
 workspace = true

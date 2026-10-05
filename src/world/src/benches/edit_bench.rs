@@ -1,9 +1,10 @@
 use criterion::{Criterion, Throughput};
 use rand::RngExt;
+use std::env::temp_dir;
 use std::hint::black_box;
 use temper_core::block_state_id::BlockStateId;
 use temper_macros::block;
-use temper_world_format::Chunk;
+use temper_world::World;
 
 fn get_rand_in_range(min: i32, max: i32) -> i32 {
     let mut rng = rand::rng();
@@ -12,9 +13,18 @@ fn get_rand_in_range(min: i32, max: i32) -> i32 {
 
 #[expect(clippy::unit_arg)]
 pub(crate) fn bench_edits(c: &mut Criterion) {
-    let chunk_data = include_bytes!("../../../../.etc/raw_chunk.dat");
-    let chunk: Chunk = bitcode::deserialize(chunk_data)
-        .expect("If this fails, go run the dump_chunk test at src/lib/world/src/mod");
+    let world = World::new(
+        temp_dir().join("edit_bench"),
+        &temper_config::server_config::create_dummy_config(),
+    )
+    .expect("Failed to create world");
+    let chunk = world
+        .get_or_generate_chunk(
+            temper_core::pos::ChunkPos::new(0, 0),
+            temper_core::dimension::Dimension::Overworld,
+        )
+        .expect("Failed to get or generate chunk")
+        .clone();
 
     let mut read_group = c.benchmark_group("edit_read");
 
