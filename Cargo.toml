@@ -289,7 +289,7 @@ mime_guess = "2.0.5"
 which = "8.0.5"
 semver = "1.0.28"
 itertools = "0.15.0"
-quick-noise = "0.2.0"
+quick-noise = { git = "https://github.com/Alysara/quick-noise.git", version = "0.3.0" }
 
 ## TUI/CLI
 crossterm = "0.29.0"
