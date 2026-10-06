@@ -7,7 +7,7 @@ impl NormalGenerator {
     #[dispatch_simd(A)]
     pub(crate) fn generate_noises(&self, input: StageInput<'_>) -> Result<(), GenerationError> {
         let grid_2d = quick_noise::Grid::<2, A>::new(16, 16)
-            .grid_position(input.pos.x(), input.pos.z())
+            .grid_position(input.pos.x() as f32, input.pos.z() as f32)
             .seed(self.seed as i64);
 
         let mut end_grid_2d = [0f32; 256];
@@ -19,7 +19,7 @@ impl NormalGenerator {
             // noise type will be different from each other but the same when using the same world seed
             .seed(1)
             .frequency(1.0 / 1024.0)
-            .octaves(4)
+            .octaves(3)
             .lacunarity(2.0)
             .persistence(0.45)
             .fill(end_grid_2d.as_mut_slice());
@@ -36,7 +36,7 @@ impl NormalGenerator {
             .builder::<Fbm, Perlin>()
             .seed(2)
             .frequency(1.0 / 360.0)
-            .octaves(4)
+            .octaves(3)
             .lacunarity(2.0)
             .persistence(0.45)
             .fill(end_grid_2d.as_mut_slice());
@@ -52,7 +52,7 @@ impl NormalGenerator {
             .builder::<Fbm, Perlin>()
             .seed(3)
             .frequency(1.0 / 260.0)
-            .octaves(3)
+            .octaves(2)
             .lacunarity(2.0)
             .persistence(0.5)
             .fill(end_grid_2d.as_mut_slice());
@@ -68,7 +68,7 @@ impl NormalGenerator {
             .builder::<Fbm, Perlin>()
             .seed(4)
             .frequency(1.0 / 1200.0)
-            .octaves(3)
+            .octaves(2)
             .lacunarity(2.0)
             .persistence(0.4)
             .fill(end_grid_2d.as_mut_slice());
@@ -84,7 +84,7 @@ impl NormalGenerator {
             .builder::<Fbm, Perlin>()
             .seed(5)
             .frequency(1.0 / 800.0)
-            .octaves(3)
+            .octaves(2)
             .lacunarity(2.0)
             .persistence(0.45)
             .fill(end_grid_2d.as_mut_slice());
@@ -100,7 +100,7 @@ impl NormalGenerator {
             .builder::<Fbm, Perlin>()
             .seed(6)
             .frequency(1.0 / 80.0)
-            .octaves(3)
+            .octaves(2)
             .lacunarity(2.0)
             .persistence(0.5)
             .fill(end_grid_2d.as_mut_slice());
