@@ -5037,8 +5037,11 @@ impl EntityType {
     }
     pub fn get_attribute(&self, name: &str) -> Option<f64> {
         use crate::attributes::Attribute;
-        if let Some(attr) = self.attributes.iter().find(|attr| attr.name == name) {
-            return Some(attr.value);
+        if let Ok(idx) = self
+            .attributes
+            .binary_search_by_key(&name, |attr| attr.name)
+        {
+            return Some(self.attributes[idx].value);
         }
         Attribute::from_name(name).map(|attr| attr.default_value)
     }

@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use temper_components::bossbar::BossbarOwner;
 use temper_components::combat::CombatProperties;
 use temper_components::entity_identity::Identity;
-use temper_components::game_id::GameID;
 use temper_components::health::Health;
 use temper_components::last_synced_position::LastSyncedPosition;
 use temper_components::metadata::EntityMetadata;

@@ -168,27 +168,34 @@ impl quote::ToTokens for NamedEntityType<'_> {
             MobCategory::MISC => quote! { MobCategory::MISC },
         };
 
-        // Filter out entity attributes that match the global default values
-        let attributes_tokens = entity.attributes.iter().filter_map(|attr| {
-            let lookup_name = attr.name.strip_prefix("generic.").unwrap_or(&attr.name);
-
-            if let Some(default_attr) = global_attribute_defaults
-                .get(lookup_name)
-                .or_else(|| global_attribute_defaults.get(&attr.name))
-            {
-                if (attr.value - default_attr.default_value).abs() < f64::EPSILON {
-                    return None;
+        let mut filtered_attributes: Vec<_> = entity
+            .attributes
+            .iter()
+            .filter(|attr| {
+                let lookup_name = attr.name.strip_prefix("generic.").unwrap_or(&attr.name);
+                if let Some(default_attr) = global_attribute_defaults
+                    .get(lookup_name)
+                    .or_else(|| global_attribute_defaults.get(&attr.name))
+                {
+                    if (attr.value - default_attr.default_value).abs() < f64::EPSILON {
+                        return false;
+                    }
                 }
-            }
+                true
+            })
+            .collect();
 
+        filtered_attributes.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let attributes_tokens = filtered_attributes.iter().map(|attr| {
             let attr_name = &attr.name;
             let value = attr.value;
-            Some(quote! {
+            quote! {
                 EntityAttribute {
                     name: #attr_name,
                     value: #value,
                 }
-            })
+            }
         });
 
         let saveable = entity.saveable;
@@ -411,11 +418,11 @@ pub(crate) fn build() -> TokenStream {
 
             pub fn get_attribute(&self, name: &str) -> Option<f64> {
                 use crate::attributes::Attribute;
-                if let Some(attr) = self.attributes.iter().find(|attr| attr.name == name) {
-                    return Some(attr.value);
+
+                if let Ok(idx) = self.attributes.binary_search_by_key(&name, |attr| attr.name) {
+                    return Some(self.attributes[idx].value);
                 }
 
-                // Fallback to global Attribute default value
                 Attribute::from_name(name).map(|attr| attr.default_value)
             }
         }
