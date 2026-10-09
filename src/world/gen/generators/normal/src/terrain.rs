@@ -26,7 +26,10 @@ impl NoiseGenerator {
 
         let step = step_xz as f32;
         let grid = Grid::<2, A>::new(size_x, size_z)
-            .sample_position((origin_x as f32 / step).into(), (origin_z as f32 / step).into())
+            .sample_position(
+                (origin_x as f32 / step).into(),
+                (origin_z as f32 / step).into(),
+            )
             .seed(self.seed as i64);
 
         let mut base = vec![0.0f32; output.len()];
