@@ -29,24 +29,17 @@ fn generate_caves(input: StageInput<'_>, noise: &NoiseGenerator) {
     let mut grid = vec![0.0f64; gx * gy * gz];
     let idx = |ix: usize, iy: usize, iz: usize| -> usize { (iy * gz + iz) * gx + ix };
 
-    for ix in 0..gx {
-        for iz in 0..gz {
-            for iy in 0..gy {
-                let x = (ix as i32) * STEP_XZ;
-                let z = (iz as i32) * STEP_XZ;
-                let y = Y_MIN + (iy as i32) * STEP_Y;
-
-                let world_x = input.pos.x() * 16 + x;
-                let world_z = input.pos.z() * 16 + z;
-
-                grid[idx(ix, iy, iz)] = noise.get_cave_noise(
-                    f64::from(world_x) / 2.0,
-                    f64::from(y) / 2.0,
-                    f64::from(world_z) / 2.0,
-                );
-            }
-        }
-    }
+    noise.fill_cave_noise(
+        input.pos.x() * 16,
+        Y_MIN,
+        input.pos.z() * 16,
+        STEP_XZ,
+        STEP_Y,
+        gx,
+        gy,
+        gz,
+        &mut grid,
+    );
 
     for x in 0..16i32 {
         for z in 0..16i32 {
@@ -80,7 +73,7 @@ fn generate_caves(input: StageInput<'_>, noise: &NoiseGenerator) {
                 let cave_noise =
                     trilerp(c000, c100, c010, c110, c001, c101, c011, c111, tx, ty, tz);
 
-                if cave_noise <= 0.6 {
+                if cave_noise <= 0.35 {
                     continue;
                 }
 

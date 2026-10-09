@@ -77,7 +77,7 @@ pub fn handle_spawn_mob_bundle(
             health.current = health.max;
         }
 
-        commands.entity(mob_entity).insert((GameID::new(), health));
+        commands.entity(mob_entity).insert(health);
 
         query.iter().for_each(|tracker| {
             tracker.to_track.push((uuid, kind.to_entity_type().id));
